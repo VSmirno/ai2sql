@@ -9,34 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Initialize database with proper schema
-export const initializeDatabase = async () => {
-  try {
-    // Create test superuser if not exists
-    const { data: existingUser } = await supabase.auth.admin.getUserByEmail('admin@example.com');
-    
-    if (!existingUser.user) {
-      await supabase.auth.admin.createUser({
-        email: 'admin@example.com',
-        password: 'asdfasdf',
-        email_confirm: true,
-        user_metadata: {
-          name: 'Super Admin',
-          role: 'superuser'
-        }
-      });
-    }
-  } catch (error) {
-    console.log('Database initialization:', error);
-  }
-};
-
-// Database types
-export interface Database {
-  public: {
-    Tables: {
-      users: {
-        Row: {
           id: string;
           email: string;
           name: string;
