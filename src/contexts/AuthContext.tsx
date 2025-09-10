@@ -1,12 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
+import { supabase } from '../lib/supabase';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  role: 'user' | 'admin' | 'superuser';
+}
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
+  isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  // Compatibility methods
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
-  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,72 +34,139 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = localStorage.getItem('ai2sql_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserData(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
+  const loadUserData = async (userId: string) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('ai2sql_user', JSON.stringify(mockUser));
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error loading user data:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          avatar: data.avatar,
+          role: data.role as 'user' | 'admin' | 'superuser'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) throw error;
+    
+    if (data.user) {
+      await loadUserData(data.user.id);
+    }
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    // Если пользователь создан, загружаем его данные
+    if (data.user && !data.user.email_confirmed_at) {
+      // Для тестирования - сразу загружаем данные
+      setTimeout(() => {
+        loadUserData(data.user!.id);
+      }, 1000);
+    }
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setUser(null);
+  };
+
+  // Compatibility methods for existing components
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await signIn(email, password);
       return true;
     } catch (error) {
+      console.error('Login error:', error);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: '1',
-        email,
-        name,
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('ai2sql_user', JSON.stringify(mockUser));
+      await signUp(email, password, name);
       return true;
     } catch (error) {
+      console.error('Register error:', error);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('ai2sql_user');
+    signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isLoading: loading,
+      signIn,
+      signUp,
+      signOut,
+      login,
+      register,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );
