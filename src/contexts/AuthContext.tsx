@@ -27,17 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mock users for development
-  const mockUsers = [
-    {
-      id: 'admin-user-id',
-      email: 'admin@example.com',
-      name: 'Администратор',
-      role: 'superuser' as const,
-      password: 'asdfasdf'
-    }
-  ];
-
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -77,8 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const newUser: Omit<User, 'id'> = {
               email: authUser.user.email || '',
               name: authUser.user.user_metadata?.name || authUser.user.email?.split('@')[0] || 'User',
-              role: authUser.user.email === 'admin@example.com' ? 'superuser' : 'user',
-              createdAt: new Date(),
+              role: 'user',
               lastProjectId: null
             };
 
@@ -94,8 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: createdUser.id,
               email: createdUser.email,
               name: createdUser.name,
+              avatar: createdUser.avatar,
               role: createdUser.role,
-              createdAt: new Date(createdUser.created_at),
               lastProjectId: createdUser.last_project_id
             });
           }
@@ -107,8 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.id,
           email: data.email,
           name: data.name,
+          avatar: data.avatar,
           role: data.role,
-          createdAt: new Date(data.created_at),
           lastProjectId: data.last_project_id
         });
       }
@@ -120,22 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    // Check for mock user first
-    const mockUser = mockUsers.find(u => u.email === email && u.password === password);
-    if (mockUser) {
-      // Simulate successful login for mock user
-      setUser({
-        id: mockUser.id,
-        email: mockUser.email,
-        name: mockUser.name,
-        role: mockUser.role,
-        createdAt: new Date(),
-        lastProjectId: null
-      });
-      setLoading(false);
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -163,13 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // Handle mock user logout
-    if (user?.id === 'admin-user-id') {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;

@@ -4,7 +4,7 @@ export interface User {
   name: string;
   avatar?: string;
   role: 'user' | 'admin' | 'superuser';
-  lastProjectId?: string;
+  lastProjectId?: string | null;
 }
 
 export interface Project {
