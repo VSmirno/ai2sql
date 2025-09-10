@@ -81,7 +81,7 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !email.trim() || !password.trim()}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 px-4 rounded-lg font-medium transition-colors"
           >
             {isLoading ? 'Вход...' : 'Войти'}
