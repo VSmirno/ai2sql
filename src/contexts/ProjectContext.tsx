@@ -74,6 +74,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const canUserAccessProject = (projectId: string, userId: string): boolean => {
+    if (!userId) return false;
+    
+    // Superuser has access to all projects
+    if (user?.role === 'superuser') return true;
+    
+    // Check if user is a member of the project
+    return projectMembers.some(member => 
+      member.projectId === projectId && member.userId === userId
+    );
+  };
+
+  const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
+    const member = projectMembers.find(member => 
+      member.projectId === projectId && member.userId === userId
+    );
+    return member?.role || null;
+  };
+
   const userProjects = projects.filter(project => 
     canUserAccessProject(project.id, user?.id || '')
   );
@@ -162,25 +181,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   const getProjectMembers = (projectId: string): ProjectMember[] => {
     return projectMembers.filter(member => member.projectId === projectId);
-  };
-
-  const canUserAccessProject = (projectId: string, userId: string): boolean => {
-    if (!userId) return false;
-    
-    // Superuser has access to all projects
-    if (user?.role === 'superuser') return true;
-    
-    // Check if user is a member of the project
-    return projectMembers.some(member => 
-      member.projectId === projectId && member.userId === userId
-    );
-  };
-
-  const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
-    const member = projectMembers.find(member => 
-      member.projectId === projectId && member.userId === userId
-    );
-    return member?.role || null;
   };
 
   return (
