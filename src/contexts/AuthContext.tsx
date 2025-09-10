@@ -112,6 +112,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        // Determine the role for the new user based on email
+        const newUserRole = mapSupabaseUserToUser(data.user).role;
+
+        // Explicitly insert user data into the public.users table
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            name: name, // Use the name provided during registration
+            role: newUserRole // Use the determined role
+          });
+
+        if (insertError) {
+          console.error('Error inserting user into public.users:', insertError);
+          return false; // If insertion into public.users fails, consider registration unsuccessful
+        }
         setUser(mapSupabaseUserToUser(data.user));
         return true;
       }
