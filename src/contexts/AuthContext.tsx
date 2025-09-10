@@ -65,6 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (authUser.email === 'admin@example.com') {
       role = 'superuser';
+    } else if (authUser.email?.endsWith('@admin.com')) {
+      role = 'admin';
     } else if (authUser.user_metadata?.role) {
       role = authUser.user_metadata.role;
     }
@@ -76,15 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatar: authUser.user_metadata?.avatar_url,
       role
     });
+    setLoading(false);
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) throw error;
+    
+    // Manually set user if session exists
+    if (data.user) {
+      setUserFromAuth(data.user);
+    }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
