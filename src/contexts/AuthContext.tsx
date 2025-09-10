@@ -87,6 +87,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        // If login fails with invalid credentials and it's the admin user, try to create it
+        if (error.message === 'Invalid login credentials' && email === 'admin@ai.ru') {
+          console.log('Admin user not found, attempting to create...');
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name: 'Admin User'
+              }
+            }
+          });
+
+          if (signUpError) {
+            console.error('Failed to create admin user:', signUpError);
+            return false;
+          }
+
+          if (signUpData.user) {
+            // Update the user role to superuser in the users table
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ role: 'superuser' })
+              .eq('id', signUpData.user.id);
+
+            if (updateError) {
+              console.error('Failed to update user role:', updateError);
+            }
+
+            console.log('Admin user created successfully');
+            await loadUserData(signUpData.user);
+            return true;
+          }
+        }
+
         console.error('Supabase auth error:', error);
         console.error('Error message:', error.message);
         console.error('Error status:', error.status);
