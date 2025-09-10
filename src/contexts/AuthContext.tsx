@@ -5,6 +5,9 @@ import { User } from '../types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
+  logout: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -23,6 +26,17 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Mock users for development
+  const mockUsers = [
+    {
+      id: 'admin-user-id',
+      email: 'admin@example.com',
+      name: 'Администратор',
+      role: 'superuser' as const,
+      password: 'asdfasdf'
+    }
+  ];
 
   useEffect(() => {
     // Get initial session
@@ -106,12 +120,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    // Check for mock user first
+    const mockUser = mockUsers.find(u => u.email === email && u.password === password);
+    if (mockUser) {
+      // Simulate successful login for mock user
+      setUser({
+        id: mockUser.id,
+        email: mockUser.email,
+        name: mockUser.name,
+        role: mockUser.role,
+        createdAt: new Date(),
+        lastProjectId: null
+      });
+      setLoading(false);
+      return;
+    }
 
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -129,14 +163,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Handle mock user logout
+    if (user?.id === 'admin-user-id') {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Compatibility methods for existing components
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await signIn(email, password);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  };
+
+  const register = async (email: string, password: string, name: string): Promise<boolean> => {
+    try {
+      await signUp(email, password, name);
+      return true;
+    } catch (error) {
+      console.error('Register error:', error);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    signOut();
   };
 
   return (
     <AuthContext.Provider value={{
       user,
       loading,
+      login,
+      register,
+      logout,
       signIn,
       signUp,
       signOut
