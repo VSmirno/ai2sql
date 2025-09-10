@@ -74,17 +74,68 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const canUserAccessProject = (projectId: string, userId: string): boolean => {
+    if (!userId) return false;
+    
+    // Superuser has access to all projects
+    if (user?.role === 'superuser') return true;
+    
+    // Check if user is a member of the project
+    return projectMembers.some(member => 
+      member.projectId === projectId && member.userId === userId
+    );
+  };
+
+  const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
+    const member = projectMembers.find(member => 
+      member.projectId === projectId && member.userId === userId
+    );
+    return member?.role || null;
+  };
+
   const userProjects = projects.filter(project => 
     canUserAccessProject(project.id, user?.id || '')
   );
 
   const createProject = (name: string, description?: string): Project => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    // Проверка прав доступа - только суперпользователь может создавать проекты
+    if (user.role !== 'superuser') {
+      throw new Error('Недостаточно прав для создания проекта');
+    }
+
+    // Проверка уникальности названия проекта
+    const existingProject = projects.find(p => 
+      p.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (existingProject) {
+      throw new Error('Проект с таким названием уже существует');
+    }
+
+    // Валидация данных
+    if (!name || name.trim().length === 0) {
+      throw new Error('Название проекта обязательно для заполнения');
+    }
+
+    if (name.trim().length < 3) {
+      throw new Error('Название проекта должно содержать минимум 3 символа');
+    }
+
+    if (name.trim().length > 100) {
+      throw new Error('Название проекта не должно превышать 100 символов');
+    }
+
+    if (description && description.trim().length > 500) {
+      throw new Error('Описание проекта не должно превышать 500 символов');
+    }
 
     const newProject: Project = {
       id: uuidv4(),
-      name,
-      description,
+      name: name.trim(),
+      description: description?.trim() || undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: user.id
@@ -162,25 +213,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   const getProjectMembers = (projectId: string): ProjectMember[] => {
     return projectMembers.filter(member => member.projectId === projectId);
-  };
-
-  const canUserAccessProject = (projectId: string, userId: string): boolean => {
-    if (!userId) return false;
-    
-    // Superuser has access to all projects
-    if (user?.role === 'superuser') return true;
-    
-    // Check if user is a member of the project
-    return projectMembers.some(member => 
-      member.projectId === projectId && member.userId === userId
-    );
-  };
-
-  const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
-    const member = projectMembers.find(member => 
-      member.projectId === projectId && member.userId === userId
-    );
-    return member?.role || null;
   };
 
   return (
