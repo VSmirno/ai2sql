@@ -271,6 +271,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const deleteProject = (id: string) => {
+    setProjects(prev => prev.filter(project => project.id !== id));
     setProjectMembers(prev => prev.filter(member => member.projectId !== id));
     
     if (currentProject?.id === id) {
