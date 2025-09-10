@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Chat, UserNote, SqlExample, AppSettings, DatabaseConnection, TableMetadata } from '../types';
 import { useProject } from './ProjectContext';
+import { useAuth } from './AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AppContextType {
@@ -53,6 +54,7 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const { currentProject } = useProject();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
@@ -188,6 +190,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createChat = async (name: string): Promise<Chat> => {
     if (!currentProject) throw new Error('No project selected');
+    if (!user?.id) throw new Error('User not authenticated');
     
     // Создаем чат локально без базы данных
     const newChat: Chat = {

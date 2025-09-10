@@ -139,6 +139,40 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   );
 
   const createProject = (name: string, description?: string): Project => {
+    if (!user?.id) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    // Проверка прав доступа - только суперпользователь может создавать проекты
+    if (user.role !== 'superuser') {
+      throw new Error('Недостаточно прав для создания проекта');
+    }
+
+    // Валидация данных
+    if (!name || name.trim().length === 0) {
+      throw new Error('Название проекта обязательно для заполнения');
+    }
+
+    if (name.trim().length < 3) {
+      throw new Error('Название проекта должно содержать минимум 3 символа');
+    }
+
+    if (name.trim().length > 100) {
+      throw new Error('Название проекта не должно превышать 100 символов');
+    }
+
+    if (description && description.trim().length > 500) {
+      throw new Error('Описание проекта не должно превышать 500 символов');
+    }
+
+    // Проверка уникальности названия проекта в локальном состоянии
+    const existingProject = projects.find(p => 
+      p.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (existingProject) {
+      throw new Error('Проект с таким названием уже существует');
+    }
+
     const newProject: Project = {
       id: uuidv4(),
       name: name.trim(),

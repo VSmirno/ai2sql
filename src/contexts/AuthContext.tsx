@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, initializeDatabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUserFromAuth(session.user);
+        loadUserData(session.user.id);
       } else {
         setLoading(false);
       }
@@ -49,36 +49,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setUserFromAuth(session.user);
+        loadUserData(session.user.id);
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const setUserFromAuth = (authUser: any) => {
-    // Determine role based on email or metadata
-    let role: 'user' | 'admin' | 'superuser' = 'user';
-    
-    if (authUser.email === 'admin@example.com') {
-      role = 'superuser';
-    } else if (authUser.email?.endsWith('@admin.com')) {
-      role = 'admin';
-    } else if (authUser.user_metadata?.role) {
-      role = authUser.user_metadata.role;
+  const loadUserData = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error loading user data:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          avatar: data.avatar,
+          role: data.role as 'user' | 'admin' | 'superuser'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    setUser({
-      id: authUser.id,
-      email: authUser.email || '',
-      name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Пользователь',
-      avatar: authUser.user_metadata?.avatar_url,
-      role
-    });
-    setLoading(false);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -89,14 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) throw error;
     
-    // Manually set user if session exists
     if (data.user) {
-      setUserFromAuth(data.user);
+      await loadUserData(data.user.id);
     }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -107,11 +114,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) throw error;
+
+    // Если пользователь создан, загружаем его данные
+    if (data.user && !data.user.email_confirmed_at) {
+      // Для тестирования - сразу загружаем данные
+      setTimeout(() => {
+        loadUserData(data.user!.id);
+      }, 1000);
+    }
   };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setUser(null);
   };
 
   // Compatibility methods for existing components
