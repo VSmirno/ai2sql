@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         name: email.split('@')[0],
         avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: 'user'
+        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
       };
       
       setUser(mockUser);
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         name,
         avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: 'user'
+        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
       };
       
       setUser(mockUser);
