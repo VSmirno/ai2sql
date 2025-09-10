@@ -188,8 +188,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createChat = async (name: string): Promise<Chat> => {
     if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
+    
+    // Создаем чат локально без базы данных
+    const newChat: Chat = {
+      id: uuidv4(),
+      name,
+      userId: user?.id || '',
+      projectId: currentProject.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      messages: []
+    };
+    
+    setChats(prev => [newChat, ...prev]);
+    return newChat;
+  };
 
+  const createChatAsync = async (name: string): Promise<Chat> => {
+    if (!currentProject) throw new Error('No project selected');
+    if (!user?.id) throw new Error('User not authenticated');
+    
     try {
       const { data, error } = await supabase
         .from('chats')

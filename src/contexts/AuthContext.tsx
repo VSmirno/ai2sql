@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, initializeDatabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -12,6 +12,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -36,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize database
+    initializeDatabase();
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -59,12 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setUserFromAuth = (authUser: any) => {
-    const role = authUser.email === 'admin@example.com' ? 'superuser' : 'user';
+    // Determine role based on email or metadata
+    let role: 'user' | 'admin' | 'superuser' = 'user';
+    
+    if (authUser.email === 'admin@example.com') {
+      role = 'superuser';
+    } else if (authUser.user_metadata?.role) {
+      role = authUser.user_metadata.role;
+    }
     
     setUser({
       id: authUser.id,
       email: authUser.email || '',
-      name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+      name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Пользователь',
       avatar: authUser.user_metadata?.avatar_url,
       role
     });
@@ -127,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       loading,
+      isLoading: loading,
       signIn,
       signUp,
       signOut,
