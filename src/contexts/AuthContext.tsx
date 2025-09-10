@@ -86,7 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error('Login error:', error);
+        console.error('Login error:', error.message);
+        if (error.message.includes('fetch')) {
+          console.error('Network error: Please check your Supabase configuration and internet connection');
+        }
         return false;
       }
 
@@ -97,7 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error:', error instanceof Error ? error.message : 'Unknown error');
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.error('Network error: Unable to connect to Supabase. Please check your configuration.');
+      }
       return false;
     } finally {
       setIsLoading(false);
