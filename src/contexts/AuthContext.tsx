@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadUserData = async (authUser: SupabaseUser) => {
+    setIsLoading(true);
     try {
       const { data: userData, error } = await supabase
         .from('users')
