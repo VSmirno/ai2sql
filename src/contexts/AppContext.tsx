@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Chat, UserNote, SqlExample, AppSettings, DatabaseConnection, TableMetadata } from '../types';
 import { useProject } from './ProjectContext';
-import { useAuth } from './AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AppContextType {
@@ -54,7 +53,6 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const { currentProject } = useProject();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
@@ -190,33 +188,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createChat = async (name: string): Promise<Chat> => {
     if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
-    
-    // Создаем чат локально без базы данных
-    const newChat: Chat = {
-      id: uuidv4(),
-      name,
-      userId: user?.id || '',
-      projectId: currentProject.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      messages: []
-    };
-    
-    setChats(prev => [newChat, ...prev]);
-    return newChat;
-  };
 
-  const createChatAsync = async (name: string): Promise<Chat> => {
-    if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
-    
     try {
       const { data, error } = await supabase
         .from('chats')
         .insert({
           name,
-          user_id: user.id,
+          user_id: '1', // TODO: Use actual user ID
           project_id: currentProject.id
         })
         .select()
@@ -294,7 +272,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createNote = async (title: string, content: string): Promise<UserNote> => {
     if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
 
     try {
       const { data, error } = await supabase
@@ -302,7 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .insert({
           title,
           content,
-          user_id: user.id,
+          user_id: '1', // TODO: Use actual user ID
           project_id: currentProject.id
         })
         .select()
@@ -368,7 +345,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createSqlExample = async (naturalLanguageQuery: string, sqlQuery: string) => {
     if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
 
     try {
       const { data, error } = await supabase
@@ -376,7 +352,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .insert({
           natural_language_query: naturalLanguageQuery,
           sql_query: sqlQuery,
-          user_id: user.id,
+          user_id: '1', // TODO: Use actual user ID
           project_id: currentProject.id
         })
         .select()
@@ -443,7 +419,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createConnection = async (connection: Omit<DatabaseConnection, 'id'>) => {
     if (!currentProject) throw new Error('No project selected');
-    if (!user?.id) throw new Error('User not authenticated');
 
     try {
       const { data, error } = await supabase

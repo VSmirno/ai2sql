@@ -106,8 +106,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       })) || [];
       setProjectMembers(members);
 
-      // Select first available project
-      if (projectsList.length > 0) {
+      // Select last project or first available
+      if (user.lastProjectId && projectsList.find(p => p.id === user.lastProjectId)) {
+        const lastProject = projectsList.find(p => p.id === user.lastProjectId);
+        if (lastProject) setCurrentProject(lastProject);
+      } else if (projectsList.length > 0) {
         setCurrentProject(projectsList[0]);
       }
     } catch (error) {
@@ -139,107 +142,105 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   );
 
   const createProject = (name: string, description?: string): Project => {
-    if (!user?.id) {
-      throw new Error('Пользователь не авторизован');
-    }
-
-    // Проверка прав доступа - только суперпользователь может создавать проекты
-    if (user.role !== 'superuser') {
-      throw new Error('Недостаточно прав для создания проекта');
-    }
-
-    // Валидация данных
-    if (!name || name.trim().length === 0) {
-      throw new Error('Название проекта обязательно для заполнения');
-    }
-
-    if (name.trim().length < 3) {
-      throw new Error('Название проекта должно содержать минимум 3 символа');
-    }
-
-    if (name.trim().length > 100) {
-      throw new Error('Название проекта не должно превышать 100 символов');
-    }
-
-    if (description && description.trim().length > 500) {
-      throw new Error('Описание проекта не должно превышать 500 символов');
-    }
-
-    // Проверка уникальности названия проекта в локальном состоянии
-    const existingProject = projects.find(p => 
-      p.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
-    if (existingProject) {
-      throw new Error('Проект с таким названием уже существует');
-    }
-
-    const newProject: Project = {
-      id: uuidv4(),
-      name: name.trim(),
-      description: description?.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: user?.id || '',
-      connectionId: undefined
-    };
-
-    const newMember: ProjectMember = {
-      id: uuidv4(),
-      projectId: newProject.id,
-      userId: user?.id || '',
-      role: 'admin',
-      addedAt: new Date(),
-      addedBy: user?.id || ''
-    };
-
-    setProjects(prev => [...prev, newProject]);
-    setProjectMembers(prev => [...prev, newMember]);
-    
-    return newProject;
-  };
-
-  const createProjectAsync = async (name: string, description?: string): Promise<Project> => {
+    return new Promise(async (resolve, reject) => {
       if (!user) {
-        throw new Error('Пользователь не авторизован');
+        reject(new Error('Пользователь не авторизован'));
+        return;
       }
 
       // Проверка прав доступа - только суперпользователь может создавать проекты
       if (user.role !== 'superuser') {
-        throw new Error('Недостаточно прав для создания проекта');
+        reject(new Error('Недостаточно прав для создания проекта'));
+        return;
       }
 
       // Валидация данных
       if (!name || name.trim().length === 0) {
-        throw new Error('Название проекта обязательно для заполнения');
+        reject(new Error('Название проекта обязательно для заполнения'));
+        return;
       }
 
       if (name.trim().length < 3) {
-        throw new Error('Название проекта должно содержать минимум 3 символа');
+        reject(new Error('Название проекта должно содержать минимум 3 символа'));
+        return;
       }
 
       if (name.trim().length > 100) {
-        throw new Error('Название проекта не должно превышать 100 символов');
+        reject(new Error('Название проекта не должно превышать 100 символов'));
+        return;
       }
 
       if (description && description.trim().length > 500) {
-        throw new Error('Описание проекта не должно превышать 500 символов');
+        reject(new Error('Описание проекта не должно превышать 500 символов'));
+        return;
       }
 
       try {
-        // Проверка уникальности названия проекта в локальном состоянии
-        const existingProject = projects.find(p => 
-          p.name.toLowerCase().trim() === name.toLowerCase().trim()
-        );
+        // Проверка уникальности названия проекта
+        const { data: existingProject } = await supabase
+          .from('projects')
+          .select('id')
+          .ilike('name', name.trim())
+          .single();
+
         if (existingProject) {
-          throw new Error('Проект с таким названием уже существует');
+          reject(new Error('Проект с таким названием уже существует'));
+          return;
         }
 
-        // Создаем проект локально (без базы данных)
-        return createProject(name, description);
+        // Создание проекта
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .insert({
+            name: name.trim(),
+            description: description?.trim() || null,
+            created_by: user.id
+          })
+          .select()
+          .single();
+
+        if (projectError) throw projectError;
+
+        // Добавление создателя как администратора проекта
+        const { error: memberError } = await supabase
+          .from('project_members')
+          .insert({
+            project_id: projectData.id,
+            user_id: user.id,
+            role: 'admin',
+            added_by: user.id
+          });
+
+        if (memberError) throw memberError;
+
+        const newProject: Project = {
+          id: projectData.id,
+          name: projectData.name,
+          description: projectData.description,
+          createdAt: new Date(projectData.created_at),
+          updatedAt: new Date(projectData.updated_at),
+          createdBy: projectData.created_by,
+          connectionId: projectData.connection_id
+        };
+
+        const newMember: ProjectMember = {
+          id: uuidv4(),
+          projectId: projectData.id,
+          userId: user.id,
+          role: 'admin',
+          addedAt: new Date(),
+          addedBy: user.id
+        };
+
+        setProjects(prev => [...prev, newProject]);
+        setProjectMembers(prev => [...prev, newMember]);
+        
+        resolve(newProject);
       } catch (error) {
         console.error('Error creating project:', error);
-        throw error;
+        reject(error);
       }
+    });
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {

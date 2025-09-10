@@ -9,6 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Database types
 export interface Database {
   public: {
     Tables: {
