@@ -94,8 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
+    console.log('🚀 AuthContext register function called');
+    console.log('Registration params:', { email, name, passwordLength: password.length });
+    
     setIsLoading(true);
     try {
+      console.log('📡 Calling supabase.auth.signUp...');
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -106,16 +110,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      console.log('📨 Supabase signUp response:', { data: data?.user?.id, error });
+
       if (error) {
         console.error('Registration error:', error);
+        console.log('❌ Supabase registration error:', error.message);
         return false;
       }
 
       if (data.user) {
+        console.log('👤 User created in auth, now inserting into public.users...');
         // Determine the role for the new user based on email
         const newUserRole = mapSupabaseUserToUser(data.user).role;
+        console.log('🔑 Determined user role:', newUserRole);
 
         // Explicitly insert user data into the public.users table
+        console.log('💾 Inserting user into public.users table...');
         const { error: insertError } = await supabase
           .from('users')
           .insert({
@@ -125,20 +135,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: newUserRole // Use the determined role
           });
 
+        console.log('📊 Public users insert result:', { insertError });
+
         if (insertError) {
           console.error('Error inserting user into public.users:', insertError);
+          console.log('❌ Failed to insert into public.users:', insertError.message);
           return false; // If insertion into public.users fails, consider registration unsuccessful
         }
+        
+        console.log('✅ User successfully inserted into public.users');
         setUser(mapSupabaseUserToUser(data.user));
+        console.log('🎯 User state updated, registration complete');
         return true;
       }
 
+      console.log('❌ No user data returned from Supabase');
       return false;
     } catch (error) {
       console.error('Registration error:', error);
+      console.log('💥 Unexpected error during registration:', error);
       return false;
     } finally {
       setIsLoading(false);
+      console.log('🏁 Registration process finished, loading state reset');
     }
   };
 

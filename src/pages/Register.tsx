@@ -19,27 +19,43 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 Registration form submitted');
+    console.log('Form data:', { 
+      name: formData.name, 
+      email: formData.email, 
+      passwordLength: formData.password.length,
+      confirmPasswordLength: formData.confirmPassword.length 
+    });
+    
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast.error('Пожалуйста, заполните все поля');
+      console.log('❌ Validation failed: empty fields');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Пароли не совпадают');
+      console.log('❌ Validation failed: passwords do not match');
       return;
     }
 
     if (formData.password.length < 6) {
       toast.error('Пароль должен содержать минимум 6 символов');
+      console.log('❌ Validation failed: password too short');
       return;
     }
 
+    console.log('✅ All validations passed, calling register function');
     const success = await register(formData.email, formData.password, formData.name);
+    console.log('📝 Register function returned:', success);
+    
     if (success) {
       toast.success('Регистрация прошла успешно!');
+      console.log('✅ Registration successful, navigating to home');
       navigate('/');
     } else {
       toast.error('Ошибка при регистрации');
+      console.log('❌ Registration failed');
     }
   };
 
