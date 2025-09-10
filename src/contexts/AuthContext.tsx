@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
+import { supabase } from '../lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -24,32 +26,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const storedUser = localStorage.getItem('ai2sql_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserData(session.user);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await loadUserData(session.user);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const loadUserData = async (authUser: SupabaseUser) => {
+    try {
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading user data:', error);
+        setUser(null);
+      } else {
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          avatar: userData.avatar,
+          role: userData.role,
+          lastProjectId: userData.last_project_id
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('ai2sql_user', JSON.stringify(mockUser));
-      return true;
+        password
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        return false;
+      }
+
+      if (data.user) {
+        await loadUserData(data.user);
+        return true;
+      }
+
+      return false;
     } catch (error) {
+      console.error('Login error:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -59,30 +107,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
-        role: email === 'admin@example.com' ? 'superuser' : 'user' // Для демонстрации: admin@example.com получает роль суперпользователя
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('ai2sql_user', JSON.stringify(mockUser));
-      return true;
+        password,
+        options: {
+          data: {
+            name: name
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        return false;
+      }
+
+      if (data.user) {
+        // User will be created in users table by trigger
+        return true;
+      }
+
+      return false;
     } catch (error) {
+      console.error('Registration error:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('ai2sql_user');
   };
 
   return (

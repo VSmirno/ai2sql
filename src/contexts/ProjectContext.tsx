@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Project, ProjectMember } from '../types';
 import { useAuth } from './AuthContext';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabase';
 
 interface ProjectContextType {
   projects: Project[];
@@ -10,18 +10,20 @@ interface ProjectContextType {
   userProjects: Project[];
   
   // Project management
-  createProject: (name: string, description?: string) => Project;
-  updateProject: (id: string, updates: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
+  createProject: (name: string, description?: string) => Promise<Project>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   selectProject: (projectId: string) => void;
   
   // Member management
-  addProjectMember: (projectId: string, userId: string, role: ProjectMember['role']) => void;
-  updateMemberRole: (projectId: string, userId: string, role: ProjectMember['role']) => void;
-  removeMember: (projectId: string, userId: string) => void;
+  addProjectMember: (projectId: string, userId: string, role: ProjectMember['role']) => Promise<void>;
+  updateMemberRole: (projectId: string, userId: string, role: ProjectMember['role']) => Promise<void>;
+  removeMember: (projectId: string, userId: string) => Promise<void>;
   getProjectMembers: (projectId: string) => ProjectMember[];
   canUserAccessProject: (projectId: string, userId: string) => boolean;
   getUserRole: (projectId: string, userId: string) => ProjectMember['role'] | null;
+  
+  isLoading: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -39,40 +41,93 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize with mock data
+  // Load projects when user changes
   useEffect(() => {
     if (user) {
-      const mockProject: Project = {
-        id: uuidv4(),
-        name: 'Основной проект',
-        description: 'Проект для работы с основной базой данных',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: user.id
-      };
-
-      const mockMember: ProjectMember = {
-        id: uuidv4(),
-        projectId: mockProject.id,
-        userId: user.id,
-        role: 'admin',
-        addedAt: new Date(),
-        addedBy: user.id
-      };
-
-      setProjects([mockProject]);
-      setProjectMembers([mockMember]);
-      
-      // Select last project or first available
-      const lastProjectId = user.lastProjectId;
-      if (lastProjectId && lastProjectId === mockProject.id) {
-        setCurrentProject(mockProject);
-      } else {
-        setCurrentProject(mockProject);
-      }
+      loadProjects();
+      loadProjectMembers();
+    } else {
+      setProjects([]);
+      setCurrentProject(null);
+      setProjectMembers([]);
     }
   }, [user]);
+
+  const loadProjects = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading projects:', error);
+        return;
+      }
+
+      const projectsData = data.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        connectionId: p.connection_id
+      }));
+
+      setProjects(projectsData);
+
+      // Select last project or first available
+      if (user.lastProjectId) {
+        const lastProject = projectsData.find(p => p.id === user.lastProjectId);
+        if (lastProject && canUserAccessProject(lastProject.id, user.id)) {
+          setCurrentProject(lastProject);
+        }
+      } else if (projectsData.length > 0) {
+        const firstAccessibleProject = projectsData.find(p => canUserAccessProject(p.id, user.id));
+        if (firstAccessibleProject) {
+          setCurrentProject(firstAccessibleProject);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadProjectMembers = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('project_members')
+        .select('*');
+
+      if (error) {
+        console.error('Error loading project members:', error);
+        return;
+      }
+
+      const membersData = data.map(m => ({
+        id: m.id,
+        projectId: m.project_id,
+        userId: m.user_id,
+        role: m.role,
+        addedAt: new Date(m.added_at),
+        addedBy: m.added_by
+      }));
+
+      setProjectMembers(membersData);
+    } catch (error) {
+      console.error('Error loading project members:', error);
+    }
+  };
 
   const canUserAccessProject = (projectId: string, userId: string): boolean => {
     if (!userId) return false;
@@ -97,84 +152,87 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     canUserAccessProject(project.id, user?.id || '')
   );
 
-  const createProject = (name: string, description?: string): Project => {
+  const createProject = async (name: string, description?: string): Promise<Project> => {
     if (!user) {
       throw new Error('Пользователь не авторизован');
     }
 
-    // Проверка прав доступа - только суперпользователь может создавать проекты
     if (user.role !== 'superuser') {
       throw new Error('Недостаточно прав для создания проекта');
     }
 
-    // Проверка уникальности названия проекта
-    const existingProject = projects.find(p => 
-      p.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
-    if (existingProject) {
-      throw new Error('Проект с таким названием уже существует');
-    }
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        name: name.trim(),
+        description: description?.trim() || null,
+        created_by: user.id
+      })
+      .select()
+      .single();
 
-    // Валидация данных
-    if (!name || name.trim().length === 0) {
-      throw new Error('Название проекта обязательно для заполнения');
-    }
-
-    if (name.trim().length < 3) {
-      throw new Error('Название проекта должно содержать минимум 3 символа');
-    }
-
-    if (name.trim().length > 100) {
-      throw new Error('Название проекта не должно превышать 100 символов');
-    }
-
-    if (description && description.trim().length > 500) {
-      throw new Error('Описание проекта не должно превышать 500 символов');
+    if (error) {
+      throw new Error(error.message);
     }
 
     const newProject: Project = {
-      id: uuidv4(),
-      name: name.trim(),
-      description: description?.trim() || undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: user.id
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      createdBy: data.created_by,
+      connectionId: data.connection_id
     };
 
-    const newMember: ProjectMember = {
-      id: uuidv4(),
-      projectId: newProject.id,
-      userId: user.id,
-      role: 'admin',
-      addedAt: new Date(),
-      addedBy: user.id
-    };
+    // Add creator as admin
+    await supabase
+      .from('project_members')
+      .insert({
+        project_id: newProject.id,
+        user_id: user.id,
+        role: 'admin',
+        added_by: user.id
+      });
 
-    setProjects(prev => [...prev, newProject]);
-    setProjectMembers(prev => [...prev, newMember]);
+    await loadProjects();
+    await loadProjectMembers();
     
     return newProject;
   };
 
-  const updateProject = (id: string, updates: Partial<Project>) => {
-    setProjects(prev => prev.map(project => 
-      project.id === id 
-        ? { ...project, ...updates, updatedAt: new Date() }
-        : project
-    ));
+  const updateProject = async (id: string, updates: Partial<Project>) => {
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        name: updates.name,
+        description: updates.description
+      })
+      .eq('id', id);
 
-    if (currentProject?.id === id) {
-      setCurrentProject(prev => prev ? { ...prev, ...updates, updatedAt: new Date() } : null);
+    if (error) {
+      throw new Error(error.message);
     }
+
+    await loadProjects();
   };
 
-  const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(project => project.id !== id));
-    setProjectMembers(prev => prev.filter(member => member.projectId !== id));
-    
+  const deleteProject = async (id: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
     if (currentProject?.id === id) {
       setCurrentProject(null);
     }
+
+    await loadProjects();
+    await loadProjectMembers();
   };
 
   const selectProject = (projectId: string) => {
@@ -184,31 +242,51 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addProjectMember = (projectId: string, userId: string, role: ProjectMember['role']) => {
-    const newMember: ProjectMember = {
-      id: uuidv4(),
-      projectId,
-      userId,
-      role,
-      addedAt: new Date(),
-      addedBy: user?.id || ''
-    };
+  const addProjectMember = async (projectId: string, userId: string, role: ProjectMember['role']) => {
+    if (!user) return;
 
-    setProjectMembers(prev => [...prev, newMember]);
+    const { error } = await supabase
+      .from('project_members')
+      .insert({
+        project_id: projectId,
+        user_id: userId,
+        role,
+        added_by: user.id
+      });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await loadProjectMembers();
   };
 
-  const updateMemberRole = (projectId: string, userId: string, role: ProjectMember['role']) => {
-    setProjectMembers(prev => prev.map(member => 
-      member.projectId === projectId && member.userId === userId
-        ? { ...member, role }
-        : member
-    ));
+  const updateMemberRole = async (projectId: string, userId: string, role: ProjectMember['role']) => {
+    const { error } = await supabase
+      .from('project_members')
+      .update({ role })
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await loadProjectMembers();
   };
 
-  const removeMember = (projectId: string, userId: string) => {
-    setProjectMembers(prev => prev.filter(member => 
-      !(member.projectId === projectId && member.userId === userId)
-    ));
+  const removeMember = async (projectId: string, userId: string) => {
+    const { error } = await supabase
+      .from('project_members')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await loadProjectMembers();
   };
 
   const getProjectMembers = (projectId: string): ProjectMember[] => {
@@ -230,7 +308,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       removeMember,
       getProjectMembers,
       canUserAccessProject,
-      getUserRole
+      getUserRole,
+      isLoading
     }}>
       {children}
     </ProjectContext.Provider>

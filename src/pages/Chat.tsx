@@ -3,14 +3,12 @@ import { Send, RotateCcw, Plus, FileText, StickyNote, Settings as SettingsIcon, 
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
-import { Message } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 
 const Chat = () => {
   const { user } = useAuth();
   const { currentProject } = useProject();
-  const { currentChat, chats, createChat, selectChat, notes } = useApp();
+  const { currentChat, chats, createChat, selectChat, notes, addMessage } = useApp();
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
@@ -30,16 +28,12 @@ const Chat = () => {
       return;
     }
 
-    const userMessage: Message = {
-      id: uuidv4(),
-      chatId: currentChat.id,
-      role: 'user',
-      content: message.trim(),
-      timestamp: new Date()
-    };
-
     // Add user message
-    currentChat.messages.push(userMessage);
+    await addMessage(currentChat.id, {
+      role: 'user',
+      content: message.trim()
+    });
+    
     setMessage('');
     setIsLoading(true);
 
@@ -47,9 +41,7 @@ const Chat = () => {
       // Simulate AI response
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const aiResponse: Message = {
-        id: uuidv4(),
-        chatId: currentChat.id,
+      await addMessage(currentChat.id, {
         role: 'assistant',
         content: 'Вот SQL-запрос на основе вашего запроса:',
         sqlQuery: `SELECT u.id, u.name, u.email, COUNT(o.id) as order_count
@@ -57,11 +49,9 @@ FROM users u
 LEFT JOIN orders o ON u.id = o.user_id
 WHERE u.status = 'active'
 GROUP BY u.id, u.name, u.email
-ORDER BY order_count DESC;`,
-        timestamp: new Date()
-      };
-
-      currentChat.messages.push(aiResponse);
+ORDER BY order_count DESC;`
+      });
+      
       toast.success('SQL-запрос сгенерирован');
     } catch (error) {
       toast.error('Ошибка при генерации запроса');
