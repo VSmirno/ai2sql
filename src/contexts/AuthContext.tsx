@@ -109,6 +109,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Special handling for admin user - ensure they exist in auth
+      if (email === 'admin@example.com') {
+        // Try to sign up the admin user first if they don't exist
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: 'admin@example.com',
+          password: 'asdfasdf',
+          options: {
+            data: {
+              name: 'Admin User'
+            }
+          }
+        });
+        
+        // Ignore error if user already exists
+        if (signUpError && !signUpError.message.includes('already registered')) {
+          console.error('Error creating admin user:', signUpError);
+        }
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
