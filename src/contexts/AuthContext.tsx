@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserData = async (authUser: SupabaseUser) => {
     try {
+      console.log('Loading user data for:', authUser.id);
       const { data: userData, error } = await supabase
         .from('users')
         .select('*')
@@ -58,8 +59,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error loading user data:', error);
-        setUser(null);
+        // If user doesn't exist in users table, create from auth user data
+        if (error.code === 'PGRST116') {
+          console.log('User not found in users table, using auth data');
+          setUser({
+            id: authUser.id,
+            email: authUser.email || '',
+            name: authUser.user_metadata?.name || 'User',
+            avatar: null,
+            role: 'user',
+            lastProjectId: null
+          });
+        } else {
+          setUser(null);
+        }
       } else {
+        console.log('User data loaded:', userData);
         setUser({
           id: userData.id,
           email: userData.email,
@@ -71,7 +86,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading user data:', error);
-      setUser(null);
+      // Fallback to auth user data
+      setUser({
+        id: authUser.id,
+        email: authUser.email || '',
+        name: authUser.user_metadata?.name || 'User',
+        avatar: null,
+        role: 'user',
+        lastProjectId: null
+      });
     } finally {
       setIsLoading(false);
     }
