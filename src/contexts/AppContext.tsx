@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Chat, UserNote, SqlExample, AppSettings, DatabaseConnection, TableMetadata } from '../types';
+import { useProject } from './ProjectContext';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AppContextType {
@@ -51,6 +52,7 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { currentProject } = useProject();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [notes, setNotes] = useState<UserNote[]>([]);
@@ -66,11 +68,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize with mock data
   useEffect(() => {
+    if (!currentProject) {
+      // Clear data when no project is selected
+      setChats([]);
+      setCurrentChat(null);
+      setNotes([]);
+      setSqlExamples([]);
+      setConnections([]);
+      setSelectedConnection(null);
+      setMetadata([]);
+      return;
+    }
+
     // Mock chats
     const mockChat: Chat = {
       id: uuidv4(),
       name: 'Новый чат',
       userId: '1',
+      projectId: currentProject.id,
       createdAt: new Date(),
       updatedAt: new Date(),
       messages: []
@@ -85,6 +100,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         title: 'Структура пользователей',
         content: 'Таблица users содержит информацию о пользователях системы. Поле status может быть: active, inactive, pending.',
         userId: '1',
+        projectId: currentProject.id,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -93,6 +109,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         title: 'Продажи и заказы',
         content: 'Orders связаны с users через user_id. Статусы заказов: draft, pending, completed, cancelled.',
         userId: '1',
+        projectId: currentProject.id,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -106,6 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         naturalLanguageQuery: 'Найти всех активных пользователей',
         sqlQuery: 'SELECT * FROM users WHERE status = \'active\';',
         userId: '1',
+        projectId: currentProject.id,
         createdAt: new Date()
       },
       {
@@ -113,6 +131,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         naturalLanguageQuery: 'Получить общую сумму заказов за текущий месяц',
         sqlQuery: 'SELECT SUM(total_amount) FROM orders WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE);',
         userId: '1',
+        projectId: currentProject.id,
         createdAt: new Date()
       }
     ];
@@ -130,13 +149,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setConnections([mockConnection]);
     setSelectedConnection(mockConnection);
-  }, []);
+  }, [currentProject]);
 
   const createChat = (name: string): Chat => {
+    if (!currentProject) throw new Error('No project selected');
+    
     const newChat: Chat = {
       id: uuidv4(),
       name,
       userId: '1',
+      projectId: currentProject.id,
       createdAt: new Date(),
       updatedAt: new Date(),
       messages: []
@@ -169,11 +191,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createNote = (title: string, content: string): UserNote => {
+    if (!currentProject) throw new Error('No project selected');
+    
     const newNote: UserNote = {
       id: uuidv4(),
       title,
       content,
       userId: '1',
+      projectId: currentProject.id,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -192,11 +217,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createSqlExample = (naturalLanguageQuery: string, sqlQuery: string) => {
+    if (!currentProject) throw new Error('No project selected');
+    
     const newExample: SqlExample = {
       id: uuidv4(),
       naturalLanguageQuery,
       sqlQuery,
       userId: '1',
+      projectId: currentProject.id,
       createdAt: new Date()
     };
     setSqlExamples(prev => [newExample, ...prev]);

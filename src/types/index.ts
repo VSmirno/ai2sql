@@ -3,12 +3,34 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  role: 'user' | 'admin' | 'superuser';
+  lastProjectId?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  connectionId?: string;
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: 'viewer' | 'editor' | 'admin';
+  addedAt: Date;
+  addedBy: string;
 }
 
 export interface Chat {
   id: string;
   name: string;
   userId: string;
+  projectId: string;
   createdAt: Date;
   updatedAt: Date;
   messages: Message[];
@@ -35,6 +57,7 @@ export interface DatabaseConnection {
 
 export interface TableMetadata {
   id: string;
+  projectId: string;
   schema: string;
   table: string;
   columns: ColumnMetadata[];
@@ -55,6 +78,7 @@ export interface UserNote {
   title: string;
   content: string;
   userId: string;
+  projectId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +88,7 @@ export interface SqlExample {
   naturalLanguageQuery: string;
   sqlQuery: string;
   userId: string;
+  projectId: string;
   createdAt: Date;
 }
 

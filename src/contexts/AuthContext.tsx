@@ -42,7 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: '1',
         email,
         name: email.split('@')[0],
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`
+        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
+        role: 'user'
       };
       
       setUser(mockUser);
@@ -65,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: '1',
         email,
         name,
-        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`
+        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`,
+        role: 'user'
       };
       
       setUser(mockUser);

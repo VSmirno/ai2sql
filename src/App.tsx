@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
+import { ProjectProvider } from './contexts/ProjectContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -11,6 +12,7 @@ import Metadata from './pages/Metadata';
 import Notes from './pages/Notes';
 import SqlExamples from './pages/SqlExamples';
 import Settings from './pages/Settings';
+import ProjectManagement from './pages/ProjectManagement';
 import { useAuth } from './contexts/AuthContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -67,6 +69,11 @@ function AppContent() {
                 <Settings />
               </ProtectedRoute>
             } />
+            <Route path="projects" element={
+              <ProtectedRoute>
+                <ProjectManagement />
+              </ProtectedRoute>
+            } />
           </Route>
         </Routes>
         <Toaster position="top-right" />
@@ -78,9 +85,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <ProjectProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </ProjectProvider>
     </AuthProvider>
   );
 }

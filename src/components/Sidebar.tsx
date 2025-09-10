@@ -11,14 +11,18 @@ import {
   MoreHorizontal,
   Edit3,
   Trash2,
-  User
+  User,
+  FolderOpen
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
+import { useProject } from '../contexts/ProjectContext';
+import ProjectSelector from './ProjectSelector';
 import toast from 'react-hot-toast';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { currentProject } = useProject();
   const { chats, currentChat, createChat, selectChat, deleteChat, renameChat } = useApp();
   const navigate = useNavigate();
   const [showAllChats, setShowAllChats] = useState(false);
@@ -32,6 +36,10 @@ const Sidebar = () => {
   };
 
   const handleCreateNewChat = () => {
+    if (!currentProject) {
+      toast.error('Сначала выберите проект');
+      return;
+    }
     const chat = createChat('Новый чат');
     selectChat(chat.id);
     navigate('/');
@@ -64,7 +72,9 @@ const Sidebar = () => {
     }
   };
 
-  const filteredChats = showAllChats ? chats : chats.filter(chat => chat.userId === user?.id);
+  const filteredChats = showAllChats 
+    ? chats.filter(chat => chat.projectId === currentProject?.id)
+    : chats.filter(chat => chat.userId === user?.id && chat.projectId === currentProject?.id);
 
   return (
     <div className="w-64 bg-gray-900 text-white flex flex-col">
@@ -89,11 +99,17 @@ const Sidebar = () => {
         </div>
       </div>
 
+      {/* Project Selector */}
+      <div className="p-4 border-b border-gray-700">
+        <ProjectSelector />
+      </div>
+
       {/* New Chat Button */}
       <div className="p-4">
         <button
           onClick={handleCreateNewChat}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+          disabled={!currentProject}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>Новый чат</span>
@@ -212,6 +228,20 @@ const Sidebar = () => {
           <Settings className="w-4 h-4" />
           <span>Настройки</span>
         </NavLink>
+        
+        {(user?.role === 'admin' || user?.role === 'superuser') && (
+          <NavLink
+            to="/projects"
+            className={({ isActive }) =>
+              `flex items-center space-x-3 p-2 rounded-lg transition-colors ${
+                isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'
+              }`
+            }
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span>Проекты</span>
+          </NavLink>
+        )}
         
         <button
           onClick={handleLogout}

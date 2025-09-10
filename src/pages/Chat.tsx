@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, RotateCcw, Plus, FileText, StickyNote, Settings as SettingsIcon, Bot } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { Message } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 
 const Chat = () => {
   const { user } = useAuth();
+  const { currentProject } = useProject();
   const { currentChat, chats, createChat, selectChat, notes } = useApp();
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +85,22 @@ ORDER BY order_count DESC;`,
   };
 
   if (!currentChat) {
+    if (!currentProject) {
+      return (
+        <div className="flex items-center justify-center h-full bg-white">
+          <div className="text-center">
+            <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">
+              Выберите проект
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Для начала работы необходимо выбрать проект
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center h-full bg-white">
         <div className="text-center">
