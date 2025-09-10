@@ -10,7 +10,7 @@ interface ProjectContextType {
   userProjects: Project[];
   
   // Project management
-  createProject: (name: string, description?: string) => Project;
+  createProject: (name: string, description?: string) => Promise<Project>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   selectProject: (projectId: string) => void;
@@ -232,83 +232,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProjects(prev => prev.filter(p => p.id !== id));
-
-      if (currentProject?.id === id) {
-        setCurrentProject(null);
-      }
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      throw error;
-    }
-  };
-      .from('projects')
-      .insert({
-        name: newProject.name,
-        description: newProject.description,
-        created_by: newProject.createdBy
-      })
-      .select()
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error creating project:', error);
-          return;
-        }
-        
-        const dbProject = {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at),
-          createdBy: data.created_by,
-          connectionId: data.connection_id
-        };
-
-        setProjects(prev => prev.map(p => 
-          p.id === newProject.id ? dbProject : p
-        ).concat(p => p.id !== newProject.id ? [dbProject] : []));
-      });
-
-    setProjects(prev => [newProject, ...prev]);
-    return newProject;
-  };
-
-  const updateProject = async (id: string, updates: Partial<Project>) => {
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({
-          name: updates.name,
-          description: updates.description
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProjects(prev => prev.map(p => 
-        p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
-      ));
-
-      if (currentProject?.id === id) {
-        setCurrentProject(prev => prev ? { ...prev, ...updates } : null);
-      }
-    } catch (error) {
-      console.error('Error updating project:', error);
-      throw error;
-    }
-  };
-
-  const deleteProject = async (id: string) => {
     try {
       const { error } = await supabase
         .from('projects')
