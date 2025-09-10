@@ -24,7 +24,7 @@ const ProjectSelector = () => {
     toast.success('Проект выбран');
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
 
     try {
       // Валидация на стороне клиента
@@ -48,7 +48,7 @@ const ProjectSelector = () => {
         return;
       }
 
-      const project = createProject(newProjectName.trim(), newProjectDescription.trim() || undefined);
+      const project = await createProject(newProjectName.trim(), newProjectDescription.trim() || undefined);
       selectProject(project.id);
       setNewProjectName('');
       setNewProjectDescription('');
@@ -61,7 +61,8 @@ const ProjectSelector = () => {
     }
   };
 
-  const canCreateProjects = user?.role === 'superuser'; // Только суперпользователь может создавать проекты
+  // Check if user is superuser by email
+  const canCreateProjects = ['admin@ai.ru', 'admin@example.com'].includes(user?.email || '');
 
   console.log('User role:', user?.role, 'Can create projects:', canCreateProjects);
 

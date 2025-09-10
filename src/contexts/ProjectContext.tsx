@@ -143,12 +143,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     canUserAccessProject(project.id, user?.id || '')
   );
 
-  const createProject = (name: string, description?: string): Project => {
+  const createProject = async (name: string, description?: string): Promise<Project> => {
     if (!user) {
       throw new Error('Пользователь не авторизован');
     }
 
-    if (user.role !== 'superuser') {
+    // Check if user is superuser by email (since we don't have users table data yet)
+    const isSuperuser = ['admin@ai.ru', 'admin@example.com'].includes(user.email || '');
+    if (!isSuperuser) {
       throw new Error('Только суперпользователи могут создавать проекты');
     }
 
@@ -160,18 +162,94 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Проект с таким названием уже существует');
     }
 
-    const newProject: Project = {
-      id: `temp-${Date.now()}`, // Temporary ID, will be replaced by DB
-      name: name.trim(),
-      description: description?.trim() || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: user.id,
-      connectionId: undefined
-    };
+    try {
+      // Insert into database and wait for response
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          name: name.trim(),
+          description: description?.trim() || null,
+          created_by: user.id
+        })
+        .select()
+        .single();
 
-    // Insert into database
-    supabase
+      if (error) {
+        console.error('Error creating project:', error);
+        throw new Error('Ошибка при создании проекта в базе данных');
+      }
+
+      const newProject: Project = {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        createdBy: data.created_by,
+        connectionId: data.connection_id
+      };
+
+      setProjects(prev => [newProject, ...prev]);
+      return newProject;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
+  };
+
+  const updateProject = async (id: string, updates: Partial<Project>) => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          name: updates.name,
+          description: updates.description
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.map(p => 
+        p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
+      ));
+
+      if (currentProject?.id === id) {
+        setCurrentProject(prev => prev ? { ...prev, ...updates } : null);
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    // Don't try to delete temporary IDs
+    if (id.startsWith('temp-')) {
+      setProjects(prev => prev.filter(p => p.id !== id));
+      if (currentProject?.id === id) {
+        setCurrentProject(null);
+      }
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.filter(p => p.id !== id));
+
+      if (currentProject?.id === id) {
+        setCurrentProject(null);
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
+  };
       .from('projects')
       .insert({
         name: newProject.name,

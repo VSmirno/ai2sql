@@ -37,12 +37,13 @@ const ProjectManagement = () => {
     { id: '4', name: 'Алексей Козлов', email: 'alexey@example.com', role: 'admin' as const }
   ];
 
-  const isSuperuser = user?.role === 'superuser';
+  // Check if user is superuser by email
+  const isSuperuser = ['admin@ai.ru', 'admin@example.com'].includes(user?.email || '');
   const canManageProjects = isSuperuser; // Только суперпользователь может управлять проектами
 
   console.log('User:', user?.email, 'Role:', user?.role, 'Is superuser:', isSuperuser);
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
 
     try {
       // Валидация на стороне клиента
@@ -75,7 +76,7 @@ const ProjectManagement = () => {
         return;
       }
 
-      createProject(formData.name.trim(), formData.description.trim() || undefined);
+      await createProject(formData.name.trim(), formData.description.trim() || undefined);
       setFormData({ name: '', description: '' });
       setIsCreating(false);
       toast.success('Проект успешно создан');
@@ -85,14 +86,14 @@ const ProjectManagement = () => {
     }
   };
 
-  const handleUpdateProject = () => {
+  const handleUpdateProject = async () => {
     if (!editingProject || !formData.name.trim()) {
       toast.error('Введите название проекта');
       return;
     }
 
     try {
-      updateProject(editingProject, {
+      await updateProject(editingProject, {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined
       });
@@ -104,9 +105,9 @@ const ProjectManagement = () => {
     }
   };
 
-  const handleDeleteProject = (projectId: string) => {
+  const handleDeleteProject = async (projectId: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот проект? Все данные будут потеряны.')) {
-      deleteProject(projectId);
+      await deleteProject(projectId);
       toast.success('Проект удален');
     }
   };
