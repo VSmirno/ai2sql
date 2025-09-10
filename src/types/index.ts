@@ -1,12 +1,3 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  role: 'user' | 'admin' | 'superuser';
-  lastProjectId?: string | null;
-}
-
 export interface Project {
   id: string;
   name: string;

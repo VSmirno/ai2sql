@@ -1,16 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { User } from '../types';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  role: 'user' | 'admin' | 'superuser';
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  // Compatibility methods
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        loadUserProfile(session.user.id);
+        setUserFromAuth(session.user);
       } else {
         setLoading(false);
       }
@@ -40,103 +48,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await loadUserProfile(session.user.id);
+        setUserFromAuth(session.user);
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        // If user doesn't exist in our users table, create them
-        if (error.code === 'PGRST116') {
-          const { data: authUser } = await supabase.auth.getUser();
-          if (authUser.user) {
-            const newUser: Omit<User, 'id'> = {
-              email: authUser.user.email || '',
-              name: authUser.user.user_metadata?.name || authUser.user.email?.split('@')[0] || 'User',
-              role: 'user',
-              lastProjectId: null
-            };
-
-            const { data: createdUser, error: createError } = await supabase
-              .from('users')
-              .insert({ ...newUser, id: userId })
-              .select()
-              .single();
-
-            if (createError) throw createError;
-            
-            setUser({
-              id: createdUser.id,
-              email: createdUser.email,
-              name: createdUser.name,
-              avatar: createdUser.avatar,
-              role: createdUser.role,
-              lastProjectId: createdUser.last_project_id
-            });
-          }
-        } else {
-          throw error;
-        }
-      } else {
-        setUser({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          avatar: data.avatar,
-          role: data.role,
-          lastProjectId: data.last_project_id
-        });
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    } finally {
-      setLoading(false);
-    }
+  const setUserFromAuth = (authUser: any) => {
+    const role = authUser.email === 'admin@example.com' ? 'superuser' : 'user';
+    
+    setUser({
+      id: authUser.id,
+      email: authUser.email || '',
+      name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+      avatar: authUser.user_metadata?.avatar_url,
+      role
+    });
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      // Special handling for admin user - ensure they exist in auth
-      if (email === 'admin@example.com') {
-        // Try to sign up the admin user first if they don't exist
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: 'admin@example.com',
-          password: 'asdfasdf',
-          options: {
-            data: {
-              name: 'Admin User'
-            }
-          }
-        });
-        
-        // Ignore error if user already exists
-        if (signUpError && !signUpError.message.includes('already registered')) {
-          console.error('Error creating admin user:', signUpError);
-        }
-      }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      throw error;
-    }
+    if (error) throw error;
   };
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -154,12 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error) {
-      throw error;
-    }
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   // Compatibility methods for existing components
@@ -191,12 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       loading,
-      login,
-      register,
-      logout,
       signIn,
       signUp,
-      signOut
+      signOut,
+      login,
+      register,
+      logout
     }}>
       {children}
     </AuthContext.Provider>

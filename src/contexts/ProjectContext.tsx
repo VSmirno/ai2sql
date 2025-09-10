@@ -106,11 +106,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       })) || [];
       setProjectMembers(members);
 
-      // Select last project or first available
-      if (user.lastProjectId && projectsList.find(p => p.id === user.lastProjectId)) {
-        const lastProject = projectsList.find(p => p.id === user.lastProjectId);
-        if (lastProject) setCurrentProject(lastProject);
-      } else if (projectsList.length > 0) {
+      // Select first available project
+      if (projectsList.length > 0) {
         setCurrentProject(projectsList[0]);
       }
     } catch (error) {
