@@ -10,7 +10,7 @@ interface ProjectContextType {
   userProjects: Project[];
   
   // Project management
-  createProject: (name: string, description?: string) => Promise<Project>;
+  createProject: (name: string, description?: string) => Project;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   selectProject: (projectId: string) => void;
@@ -60,19 +60,34 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      // Создаем дефолтный проект для пользователя
-      const defaultProject: Project = {
-        id: 'default-project',
-        name: 'Мой проект',
-        description: 'Основной проект пользователя',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: user.id,
-        connectionId: undefined
-      };
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      setProjects([defaultProject]);
-      setCurrentProject(defaultProject);
+      if (error) throw error;
+
+      const mappedProjects = data.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        connectionId: p.connection_id
+      }));
+
+      setProjects(mappedProjects);
+
+      // Select first available project if none selected
+      if (!currentProject && mappedProjects.length > 0) {
+        const accessibleProject = mappedProjects.find(p => 
+          canUserAccessProject(p.id, user.id)
+        );
+        if (accessibleProject) {
+          setCurrentProject(accessibleProject);
+        }
+      }
     } catch (error) {
       console.error('Error loading projects:', error);
     } finally {
@@ -83,17 +98,26 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const loadProjectMembers = async () => {
     if (!user) return;
 
-    // Создаем дефолтного участника проекта
-    const defaultMember: ProjectMember = {
-      id: 'default-member',
-      projectId: 'default-project',
-      userId: user.id,
-      role: 'admin',
-      addedAt: new Date(),
-      addedBy: user.id
-    };
+    try {
+      const { data, error } = await supabase
+        .from('project_members')
+        .select('*');
 
-    setProjectMembers([defaultMember]);
+      if (error) throw error;
+
+      const mappedMembers = data.map(m => ({
+        id: m.id,
+        projectId: m.project_id,
+        userId: m.user_id,
+        role: m.role as ProjectMember['role'],
+        addedAt: new Date(m.added_at),
+        addedBy: m.added_by
+      }));
+
+      setProjectMembers(mappedMembers);
+    } catch (error) {
+      console.error('Error loading project members:', error);
+    }
   };
 
   const canUserAccessProject = (projectId: string, userId: string): boolean => {
@@ -102,28 +126,42 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     // Superuser has access to all projects
     if (user?.role === 'superuser') return true;
     
-    // Все пользователи имеют доступ к дефолтному проекту
-    return projectId === 'default-project' || userId === user?.id;
+    // Check if user is a member of the project
+    return projectMembers.some(member => 
+      member.projectId === projectId && member.userId === userId
+    );
   };
 
   const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
-    if (projectId === 'default-project') {
-      return user?.role === 'superuser' ? 'admin' : 'editor';
-    }
-    return 'editor';
+    const member = projectMembers.find(m => 
+      m.projectId === projectId && m.userId === userId
+    );
+    return member?.role || null;
   };
 
   const userProjects = projects.filter(project => 
     canUserAccessProject(project.id, user?.id || '')
   );
 
-  const createProject = async (name: string, description?: string): Promise<Project> => {
+  const createProject = (name: string, description?: string): Project => {
     if (!user) {
       throw new Error('Пользователь не авторизован');
     }
 
+    if (user.role !== 'superuser') {
+      throw new Error('Только суперпользователи могут создавать проекты');
+    }
+
+    // Validate name uniqueness
+    const existingProject = projects.find(p => 
+      p.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (existingProject) {
+      throw new Error('Проект с таким названием уже существует');
+    }
+
     const newProject: Project = {
-      id: `project-${Date.now()}`,
+      id: `temp-${Date.now()}`, // Temporary ID, will be replaced by DB
       name: name.trim(),
       description: description?.trim() || null,
       createdAt: new Date(),
@@ -132,22 +170,83 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       connectionId: undefined
     };
 
+    // Insert into database
+    supabase
+      .from('projects')
+      .insert({
+        name: newProject.name,
+        description: newProject.description,
+        created_by: newProject.createdBy
+      })
+      .select()
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error creating project:', error);
+          return;
+        }
+        
+        const dbProject = {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          createdAt: new Date(data.created_at),
+          updatedAt: new Date(data.updated_at),
+          createdBy: data.created_by,
+          connectionId: data.connection_id
+        };
+
+        setProjects(prev => prev.map(p => 
+          p.id === newProject.id ? dbProject : p
+        ).concat(p => p.id !== newProject.id ? [dbProject] : []));
+      });
+
     setProjects(prev => [newProject, ...prev]);
-    
     return newProject;
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
-    setProjects(prev => prev.map(p => 
-      p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
-    ));
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          name: updates.name,
+          description: updates.description
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setProjects(prev => prev.map(p => 
+        p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
+      ));
+
+      if (currentProject?.id === id) {
+        setCurrentProject(prev => prev ? { ...prev, ...updates } : null);
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
   };
 
   const deleteProject = async (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
 
-    if (currentProject?.id === id) {
-      setCurrentProject(null);
+      if (error) throw error;
+
+      setProjects(prev => prev.filter(p => p.id !== id));
+
+      if (currentProject?.id === id) {
+        setCurrentProject(null);
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
     }
   };
 
@@ -161,30 +260,74 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const addProjectMember = async (projectId: string, userId: string, role: ProjectMember['role']) => {
     if (!user) return;
 
-    const newMember: ProjectMember = {
-      id: `member-${Date.now()}`,
-      projectId,
-      userId,
-      role,
-      addedAt: new Date(),
-      addedBy: user.id
-    };
+    try {
+      const { data, error } = await supabase
+        .from('project_members')
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          role: role,
+          added_by: user.id
+        })
+        .select()
+        .single();
 
-    setProjectMembers(prev => [...prev, newMember]);
+      if (error) throw error;
+
+      const newMember: ProjectMember = {
+        id: data.id,
+        projectId: data.project_id,
+        userId: data.user_id,
+        role: data.role,
+        addedAt: new Date(data.added_at),
+        addedBy: data.added_by
+      };
+
+      setProjectMembers(prev => [...prev, newMember]);
+    } catch (error) {
+      console.error('Error adding project member:', error);
+      throw error;
+    }
   };
 
   const updateMemberRole = async (projectId: string, userId: string, role: ProjectMember['role']) => {
-    setProjectMembers(prev => prev.map(m => 
-      m.projectId === projectId && m.userId === userId 
-        ? { ...m, role }
-        : m
-    ));
+    try {
+      const { error } = await supabase
+        .from('project_members')
+        .update({ role })
+        .eq('project_id', projectId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setProjectMembers(prev => prev.map(m => 
+        m.projectId === projectId && m.userId === userId 
+          ? { ...m, role }
+          : m
+      ));
+    } catch (error) {
+      console.error('Error updating member role:', error);
+      throw error;
+    }
   };
 
   const removeMember = async (projectId: string, userId: string) => {
-    setProjectMembers(prev => prev.filter(m => 
-      !(m.projectId === projectId && m.userId === userId)
-    ));
+    try {
+      const { error } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setProjectMembers(prev => prev.filter(m => 
+        !(m.projectId === projectId && m.userId === userId)
+      ));
+    } catch (error) {
+      console.error('Error removing member:', error);
+      throw error;
+    }
   };
 
   const getProjectMembers = (projectId: string): ProjectMember[] => {
