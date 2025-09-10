@@ -40,6 +40,8 @@ const ProjectManagement = () => {
   const isSuperuser = user?.role === 'superuser';
   const canManageProjects = isSuperuser; // Только суперпользователь может управлять проектами
 
+  console.log('User:', user?.email, 'Role:', user?.role, 'Is superuser:', isSuperuser);
+
   const handleCreateProject = () => {
 
     try {

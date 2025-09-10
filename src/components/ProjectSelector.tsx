@@ -63,10 +63,20 @@ const ProjectSelector = () => {
 
   const canCreateProjects = user?.role === 'superuser'; // Только суперпользователь может создавать проекты
 
+  console.log('User role:', user?.role, 'Can create projects:', canCreateProjects);
+
   if (!currentProject) {
     return (
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
         <p className="text-yellow-800 text-sm">Выберите проект для работы</p>
+        {canCreateProjects && (
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="mt-2 text-blue-600 hover:text-blue-800 text-sm underline"
+          >
+            Создать новый проект
+          </button>
+        )}
       </div>
     );
   }

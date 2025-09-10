@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Определяем роль пользователя
     let role: 'user' | 'admin' | 'superuser' = 'user';
     
-    // Если это admin@ai.ru - делаем суперпользователем
-    if (authUser.email === 'admin@ai.ru') {
+    // Если это admin@ai.ru или admin@example.com - делаем суперпользователем
+    if (authUser.email === 'admin@ai.ru' || authUser.email === 'admin@example.com') {
       role = 'superuser';
     }
     
