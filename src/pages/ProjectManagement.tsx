@@ -38,48 +38,21 @@ const ProjectManagement = () => {
   ];
 
   const isSuperuser = user?.role === 'superuser';
-  const canManageProjects = isSuperuser; // Только суперпользователь может управлять проектами
+  const canManageProjects = isSuperuser || user?.role === 'admin';
 
   const handleCreateProject = () => {
+    if (!formData.name.trim()) {
+      toast.error('Введите название проекта');
+      return;
+    }
 
     try {
-      // Валидация на стороне клиента
-      if (!formData.name.trim()) {
-        toast.error('Название проекта обязательно для заполнения');
-        return;
-      }
-
-      if (formData.name.trim().length < 3) {
-        toast.error('Название проекта должно содержать минимум 3 символа');
-        return;
-      }
-
-      if (formData.name.trim().length > 100) {
-        toast.error('Название проекта не должно превышать 100 символов');
-        return;
-      }
-
-      if (formData.description.trim().length > 500) {
-        toast.error('Описание проекта не должно превышать 500 символов');
-        return;
-      }
-
-      // Проверка уникальности названия
-      const existingProject = projects.find(p => 
-        p.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
-      );
-      if (existingProject) {
-        toast.error('Проект с таким названием уже существует');
-        return;
-      }
-
       createProject(formData.name.trim(), formData.description.trim() || undefined);
       setFormData({ name: '', description: '' });
       setIsCreating(false);
-      toast.success('Проект успешно создан');
+      toast.success('Проект создан');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка при создании проекта';
-      toast.error(errorMessage);
+      toast.error('Ошибка при создании проекта');
     }
   };
 
@@ -174,10 +147,7 @@ const ProjectManagement = () => {
             Доступ запрещен
           </h2>
           <p className="text-gray-500">
-            Только суперпользователи могут управлять проектами
-          </p>
-          <p className="text-gray-400 text-sm mt-2">
-            Ваша роль: {user?.role === 'admin' ? 'Администратор' : 'Пользователь'}
+            У вас нет прав для управления проектами
           </p>
         </div>
       </div>
@@ -266,52 +236,28 @@ const ProjectManagement = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Название проекта * (3-100 символов)
+                      Название проекта *
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formData.name.trim().length > 0 && formData.name.trim().length < 3
-                          ? 'border-red-300 bg-red-50'
-                          : formData.name.trim().length > 100
-                          ? 'border-red-300 bg-red-50'
-                          : 'border-gray-300'
-                      }`}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Введите название проекта"
-                      maxLength={100}
                     />
-                    <div className="mt-1 text-xs text-gray-500">
-                      {formData.name.length}/100 символов
-                      {formData.name.trim().length > 0 && formData.name.trim().length < 3 && (
-                        <span className="text-red-500 ml-2">Минимум 3 символа</span>
-                      )}
-                    </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Описание (до 500 символов)
+                      Описание
                     </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none ${
-                        formData.description.length > 500
-                          ? 'border-red-300 bg-red-50'
-                          : 'border-gray-300'
-                      }`}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                       rows={3}
                       placeholder="Описание проекта (необязательно)"
-                      maxLength={500}
                     />
-                    <div className="mt-1 text-xs text-gray-500">
-                      {formData.description.length}/500 символов
-                      {formData.description.length > 500 && (
-                        <span className="text-red-500 ml-2">Превышен лимит символов</span>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>

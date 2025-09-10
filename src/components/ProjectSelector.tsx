@@ -25,43 +25,25 @@ const ProjectSelector = () => {
   };
 
   const handleCreateProject = () => {
+    if (!newProjectName.trim()) {
+      toast.error('Введите название проекта');
+      return;
+    }
 
     try {
-      // Валидация на стороне клиента
-      if (!newProjectName.trim()) {
-        toast.error('Название проекта обязательно для заполнения');
-        return;
-      }
-
-      if (newProjectName.trim().length < 3) {
-        toast.error('Название проекта должно содержать минимум 3 символа');
-        return;
-      }
-
-      if (newProjectName.trim().length > 100) {
-        toast.error('Название проекта не должно превышать 100 символов');
-        return;
-      }
-
-      if (newProjectDescription.trim().length > 500) {
-        toast.error('Описание проекта не должно превышать 500 символов');
-        return;
-      }
-
       const project = createProject(newProjectName.trim(), newProjectDescription.trim() || undefined);
       selectProject(project.id);
       setNewProjectName('');
       setNewProjectDescription('');
       setShowCreateForm(false);
       setIsOpen(false);
-      toast.success('Проект успешно создан');
+      toast.success('Проект создан');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка при создании проекта';
-      toast.error(errorMessage);
+      toast.error('Ошибка при создании проекта');
     }
   };
 
-  const canCreateProjects = user?.role === 'superuser'; // Только суперпользователь может создавать проекты
+  const canCreateProjects = user?.role === 'admin' || user?.role === 'superuser';
 
   if (!currentProject) {
     return (
@@ -138,41 +120,23 @@ const ProjectSelector = () => {
                   <div className="p-2 space-y-3">
                     <input
                       type="text"
-                      placeholder="Название проекта (3-100 символов)"
+                      placeholder="Название проекта"
                       value={newProjectName}
                       onChange={(e) => setNewProjectName(e.target.value)}
-                      className={`w-full bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                        newProjectName.trim().length > 0 && newProjectName.trim().length < 3
-                          ? 'ring-2 ring-red-500'
-                          : newProjectName.length > 100
-                          ? 'ring-2 ring-red-500'
-                          : ''
-                      }`}
-                      maxLength={100}
+                      className="w-full bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                       autoFocus
                     />
                     <textarea
-                      placeholder="Описание (до 500 символов, необязательно)"
+                      placeholder="Описание (необязательно)"
                       value={newProjectDescription}
                       onChange={(e) => setNewProjectDescription(e.target.value)}
-                      className={`w-full bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none ${
-                        newProjectDescription.length > 500
-                          ? 'ring-2 ring-red-500'
-                          : ''
-                      }`}
+                      className="w-full bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                       rows={2}
-                      maxLength={500}
                     />
                     <div className="flex space-x-2">
                       <button
                         onClick={handleCreateProject}
-                        disabled={
-                          !newProjectName.trim() ||
-                          newProjectName.trim().length < 3 ||
-                          newProjectName.length > 100 ||
-                          newProjectDescription.length > 500
-                        }
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
                       >
                         Создать
                       </button>
