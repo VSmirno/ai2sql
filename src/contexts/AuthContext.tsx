@@ -80,30 +80,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
-        console.error('Login error:', error.message);
-        if (error.message.includes('fetch')) {
-          console.error('Network error: Please check your Supabase configuration and internet connection');
-        }
+        console.error('Supabase auth error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error status:', error.status);
         return false;
       }
 
       if (data.user) {
+        console.log('Login successful for user:', data.user.id);
         await loadUserData(data.user);
         return true;
       }
 
+      console.log('Login failed: No user data returned');
       return false;
     } catch (error) {
-      console.error('Login error:', error instanceof Error ? error.message : 'Unknown error');
-      if (error instanceof Error && error.message.includes('fetch')) {
-        console.error('Network error: Unable to connect to Supabase. Please check your configuration.');
-      }
+      console.error('Network/Connection error:', error);
+      console.error('This usually means:');
+      console.error('1. Supabase URL or API key is incorrect');
+      console.error('2. Network connectivity issues');
+      console.error('3. Supabase project is paused or deleted');
       return false;
     } finally {
       setIsLoading(false);
