@@ -23,15 +23,15 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         loadUserData(session.user);
       } else {
+        setIsLoading(false);
         setIsLoading(false);
       }
     });
@@ -42,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loadUserData(session.user);
       } else {
         setUser(null);
-        setIsLoading(false);
       }
     });
 
