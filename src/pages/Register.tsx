@@ -75,7 +75,6 @@ const Register = () => {
               onChange={handleInputChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               placeholder="Ваше имя"
-              disabled={isLoading}
             />
           </div>
 
@@ -90,7 +89,6 @@ const Register = () => {
               onChange={handleInputChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               placeholder="your.email@example.com"
-              disabled={isLoading}
             />
           </div>
 
@@ -106,7 +104,6 @@ const Register = () => {
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="Минимум 6 символов"
-                disabled={isLoading}
               />
               <button
                 type="button"
@@ -130,7 +127,6 @@ const Register = () => {
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="Повторите пароль"
-                disabled={isLoading}
               />
               <button
                 type="button"
