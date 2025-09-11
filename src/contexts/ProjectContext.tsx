@@ -55,30 +55,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Set default project based on user's last visited project
-  useEffect(() => {
-    if (user && projects.length > 0 && projectMembers.length > 0 && !currentProject) {
-      let projectToSelect: Project | null = null;
-
-      // Try to select user's last visited project if it exists and user has access
-      if (user.lastProjectId) {
-        const lastProject = projects.find(p => p.id === user.lastProjectId);
-        if (lastProject && canUserAccessProject(lastProject.id, user.id)) {
-          projectToSelect = lastProject;
-        }
-      }
-
-      // If no last project or user doesn't have access, select first available project
-      if (!projectToSelect) {
-        projectToSelect = projects.find(p => canUserAccessProject(p.id, user.id)) || null;
-      }
-
-      if (projectToSelect) {
-        setCurrentProject(projectToSelect);
-      }
-    }
-  }, [user, projects, projectMembers, currentProject]);
-
   const loadProjects = async () => {
     if (!user) return;
 
@@ -265,26 +241,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const selectProject = async (projectId: string) => {
+  const selectProject = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
     if (project && canUserAccessProject(projectId, user?.id || '')) {
       setCurrentProject(project);
-      
-      // Update user's last project in database
-      if (user) {
-        try {
-          const { error } = await supabase
-            .from('users')
-            .update({ last_project_id: projectId })
-            .eq('id', user.id);
-
-          if (error) {
-            console.error('Error updating last project:', error);
-          }
-        } catch (error) {
-          console.error('Error updating last project:', error);
-        }
-      }
     }
   };
 
