@@ -126,26 +126,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Explicitly insert user data into the public.users table
         console.log('💾 Inserting user into public.users table...');
-        const { error: upsertError } = await supabase
+        const { error: insertError } = await supabase
           .from('users')
-          .upsert({
+          .insert({
             id: data.user.id,
             email: data.user.email,
             name: name, // Use the name provided during registration
             role: newUserRole // Use the determined role
-          }, {
-            onConflict: 'id'
           });
 
-        console.log('📊 Public users upsert result:', { upsertError });
+        console.log('📊 Public users insert result:', { insertError });
 
-        if (upsertError) {
-          console.error('Error upserting user into public.users:', upsertError);
-          console.log('❌ Failed to upsert into public.users:', upsertError.message);
+        if (insertError) {
+          console.error('Error inserting user into public.users:', insertError);
+          console.log('❌ Failed to insert into public.users:', insertError.message);
           return false; // If insertion into public.users fails, consider registration unsuccessful
         }
         
-        console.log('✅ User successfully upserted into public.users');
+        console.log('✅ User successfully inserted into public.users');
         setUser(mapSupabaseUserToUser(data.user));
         console.log('🎯 User state updated, registration complete');
         return true;
