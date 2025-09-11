@@ -52,7 +52,8 @@ const Register = () => {
     if (success) {
       toast.success('Регистрация прошла успешно!');
       console.log('✅ Registration successful, navigating to home');
-      navigate('/');
+      // Navigation will be handled automatically by AuthRoute/ProtectedRoute
+      // when AuthContext updates user state via onAuthStateChange
     } else {
       toast.error('Ошибка при регистрации');
       console.log('❌ Registration failed');

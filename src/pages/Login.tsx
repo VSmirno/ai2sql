@@ -22,7 +22,8 @@ const Login = () => {
     const success = await login(email, password);
     if (success) {
       toast.success('Добро пожаловать в AI2SQL!');
-      navigate('/');
+      // Navigation will be handled automatically by AuthRoute/ProtectedRoute
+      // when AuthContext updates user state via onAuthStateChange
     } else {
       toast.error('Неверный email или пароль');
     }

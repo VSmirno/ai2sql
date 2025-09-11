@@ -86,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -107,8 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Login error:', error);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -116,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🚀 AuthContext register function called');
     console.log('Registration params:', { email, name, passwordLength: password.length });
     
-    setIsLoading(true);
     try {
       console.log('📡 Calling supabase.auth.signUp...');
       const { data, error } = await supabase.auth.signUp({
@@ -176,9 +172,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Registration error:', error);
       console.log('💥 Unexpected error during registration:', error);
       return false;
-    } finally {
-      setIsLoading(false);
-      console.log('🏁 Registration process finished, loading state reset');
     }
   };
 
