@@ -78,6 +78,16 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       }));
 
       setProjects(mappedProjects);
+
+      // Select first available project if none selected
+      if (!currentProject && mappedProjects.length > 0) {
+        const accessibleProject = mappedProjects.find(p => 
+          canUserAccessProject(p.id, user.id)
+        );
+        if (accessibleProject) {
+          setCurrentProject(accessibleProject);
+        }
+      }
     } catch (error) {
       console.error('Error loading projects:', error);
     } finally {

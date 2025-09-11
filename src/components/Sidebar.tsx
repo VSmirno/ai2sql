@@ -42,7 +42,7 @@ const Sidebar = () => {
       return;
     }
     const chat = createChat('Новый чат');
-    selectChat(chat.id); // This is now async but we don't need to await it
+    selectChat(chat.id);
     navigate('/');
   };
 

@@ -25,40 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async (authUser: SupabaseUser): Promise<User> => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        // Fallback to mapped user if database fetch fails
-        return mapSupabaseUserToUser(authUser);
-      }
-
-      return {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        avatar: data.avatar,
-        role: data.role as 'user' | 'admin' | 'superuser',
-        lastProjectId: data.last_project_id
-      };
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      return mapSupabaseUserToUser(authUser);
-    }
-  };
-
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const userProfile = await fetchUserProfile(session.user);
-        setUser(userProfile);
+        setUser(mapSupabaseUserToUser(session.user));
       }
       setIsLoading(false);
     });
@@ -66,8 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        const userProfile = await fetchUserProfile(session.user);
-        setUser(userProfile);
+        setUser(mapSupabaseUserToUser(session.user));
       } else {
         setUser(null);
       }
@@ -109,7 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      return !!data.user;
+      if (data.user) {
+        setUser(mapSupabaseUserToUser(data.user));
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       return false;
@@ -171,8 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         console.log('✅ User successfully upserted into public.users');
-        const userProfile = await fetchUserProfile(data.user);
-        setUser(userProfile);
+        setUser(mapSupabaseUserToUser(data.user));
         console.log('🎯 User state updated, registration complete');
         return true;
       }

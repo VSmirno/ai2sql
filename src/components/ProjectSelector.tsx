@@ -19,7 +19,7 @@ const ProjectSelector = () => {
   const [newProjectDescription, setNewProjectDescription] = useState('');
 
   const handleSelectProject = (projectId: string) => {
-    selectProject(projectId); // This is now async but we don't need to await it
+    selectProject(projectId);
     setIsOpen(false);
     toast.success('Проект выбран');
   };
