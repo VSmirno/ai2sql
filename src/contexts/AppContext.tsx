@@ -61,7 +61,7 @@ export function useApp() {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { currentProject } = useProject();
+  const { currentProject, updateProjectConnection } = useProject();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
@@ -658,11 +658,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setConnections(prev => [newConnection, ...prev]);
 
-      // Update project to link this connection
-      await supabase
+      // Update project to link this connection and update local state
+      const { error: updateError } = await supabase
         .from('projects')
         .update({ connection_id: data.id })
         .eq('id', currentProject.id);
+
+      if (updateError) {
+        console.error('Error updating project connection_id:', updateError);
+        throw updateError;
+      }
+
+      // Update project context with new connection ID
+      updateProjectConnection(currentProject.id, data.id);
     } catch (error) {
       console.error('Error creating connection:', error);
       throw error;

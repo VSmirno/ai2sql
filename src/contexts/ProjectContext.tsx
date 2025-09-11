@@ -23,6 +23,10 @@ interface ProjectContextType {
   canUserAccessProject: (projectId: string, userId: string) => boolean;
   getUserRole: (projectId: string, userId: string) => ProjectMember['role'] | null;
   
+  // Connection management
+  updateProjectConnection: (projectId: string, connectionId: string) => void;
+  getProjectConnection: (projectId: string) => string | null;
+  
   isLoading: boolean;
 }
 
@@ -245,6 +249,51 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       if (currentProject?.id === id) {
         setCurrentProject(prev => prev ? { ...prev, ...updates } : null);
       }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
+  };
+
+  const updateProjectConnection = (projectId: string, connectionId: string) => {
+    setProjects(prev => prev.map(p => 
+      p.id === projectId ? { ...p, connectionId, updatedAt: new Date() } : p
+    ));
+
+    if (currentProject?.id === projectId) {
+      setCurrentProject(prev => prev ? { ...prev, connectionId } : null);
+    }
+  };
+
+  const getProjectConnection = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.connectionId || null;
+  };
+
+  return (
+    <ProjectContext.Provider value={{
+      projects,
+      currentProject,
+      projectMembers,
+      userProjects,
+      createProject,
+      updateProject,
+      deleteProject,
+      selectProject,
+      addProjectMember,
+      updateMemberRole,
+      removeMember,
+      getProjectMembers,
+      canUserAccessProject,
+      getUserRole,
+      updateProjectConnection,
+      getProjectConnection,
+      isLoading
+    }}>
+      {children}
+    </ProjectContext.Provider>
+  );
+}
     } catch (error) {
       console.error('Error updating project:', error);
       throw error;
