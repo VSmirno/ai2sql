@@ -657,6 +657,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       setConnections(prev => [newConnection, ...prev]);
+
+      // Update project to link this connection
+      await supabase
+        .from('projects')
+        .update({ connection_id: data.id })
+        .eq('id', currentProject.id);
     } catch (error) {
       console.error('Error creating connection:', error);
       throw error;
