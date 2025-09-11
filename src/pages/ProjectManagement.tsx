@@ -382,7 +382,7 @@ const ProjectManagement = () => {
                             <div className="flex space-x-2">
                               {!isCurrentProject && (
                                 <button
-                                  onClick={() => selectProject(project.id)}
+                                  onClick={() => selectProject(project.id)} // This is now async but we don't need to await it
                                   className="text-blue-600 hover:text-blue-900 transition-colors"
                                 >
                                   Выбрать
