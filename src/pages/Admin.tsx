@@ -32,7 +32,7 @@ const Admin = () => {
     if (isSuperuser) {
       loadAllUsers();
     }
-  }, [isSuperuser, loadAllUsers]);
+  }, [isSuperuser]);
 
 
   if (!isSuperuser) {
