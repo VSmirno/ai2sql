@@ -23,6 +23,10 @@ interface ProjectContextType {
   canUserAccessProject: (projectId: string, userId: string) => boolean;
   getUserRole: (projectId: string, userId: string) => ProjectMember['role'] | null;
   
+  // Connection management
+  updateProjectConnection: (projectId: string, connectionId: string) => void;
+  getProjectConnection: (projectId: string) => string | null;
+  
   isLoading: boolean;
 }
 
@@ -251,21 +255,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateProjectConnection = (projectId: string, connectionId: string) => {
-    setProjects(prev => prev.map(p => 
-      p.id === projectId ? { ...p, connectionId, updatedAt: new Date() } : p
-    ));
-
-    if (currentProject?.id === projectId) {
-      setCurrentProject(prev => prev ? { ...prev, connectionId } : null);
-    }
-  };
-
-  const getProjectConnection = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    return project?.connectionId || null;
-  };
-
   const deleteProject = async (id: string) => {
     // Don't try to delete temporary IDs
     if (id.startsWith('temp-')) {
@@ -379,6 +368,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return projectMembers.filter(member => member.projectId === projectId);
   };
 
+  const updateProjectConnection = (projectId: string, connectionId: string) => {
+    setProjects(prev => prev.map(p => 
+      p.id === projectId ? { ...p, connectionId, updatedAt: new Date() } : p
+    ));
+
+    if (currentProject?.id === projectId) {
+      setCurrentProject(prev => prev ? { ...prev, connectionId } : null);
+    }
+  };
+
+  const getProjectConnection = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.connectionId || null;
+  };
+
   return (
     <ProjectContext.Provider value={{
       projects,
@@ -395,6 +399,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       getProjectMembers,
       canUserAccessProject,
       getUserRole,
+      updateProjectConnection,
+      getProjectConnection,
       isLoading
     }}>
       {children}
