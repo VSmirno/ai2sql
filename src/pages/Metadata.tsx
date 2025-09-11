@@ -440,7 +440,7 @@ const Metadata = () => {
                 </h3>
                 <p className="text-gray-500 mb-6">
                   Для просмотра метаданных необходимо настроить подключение к базе данных
-                </div>
+                </p>
                 <button
                   onClick={() => setActiveTab('connections')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-colors"
