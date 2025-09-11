@@ -26,6 +26,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadUserData = async (authUser: SupabaseUser): Promise<User> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading user data:', error);
+        return mapSupabaseUserToUser(authUser);
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.avatar,
+        role: data.role as 'user' | 'admin' | 'superuser',
+        lastProjectId: data.last_project_id
+      };
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      return mapSupabaseUserToUser(authUser);
+    }
+  };
+
   const mapSupabaseUserToUser = (authUser: SupabaseUser): User => {
     let role: 'user' | 'admin' | 'superuser' = 'user';
     
@@ -45,9 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        setUser(mapSupabaseUserToUser(session.user));
+        const userData = await loadUserData(session.user);
+        setUser(userData);
       }
       setIsLoading(false);
     });
@@ -55,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setUser(mapSupabaseUserToUser(session.user));
+        const userData = await loadUserData(session.user);
+        setUser(userData);
       } else {
         setUser(null);
       }
