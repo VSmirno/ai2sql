@@ -109,13 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      if (data.user) {
-        const userProfile = await fetchUserProfile(data.user);
-        setUser(userProfile);
-        return true;
-      }
-
-      return false;
+      return !!data.user;
     } catch (error) {
       console.error('Login error:', error);
       return false;
