@@ -55,6 +55,30 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  // Auto-select project based on lastProjectId
+  useEffect(() => {
+    if (user && projects.length > 0 && projectMembers.length > 0 && !currentProject) {
+      let projectToSelect: Project | null = null;
+
+      // Try to select last project if it exists and user has access
+      if (user.lastProjectId) {
+        const lastProject = projects.find(p => p.id === user.lastProjectId);
+        if (lastProject && canUserAccessProject(lastProject.id, user.id)) {
+          projectToSelect = lastProject;
+        }
+      }
+
+      // If no last project or no access, select first available project
+      if (!projectToSelect) {
+        projectToSelect = projects.find(p => canUserAccessProject(p.id, user.id)) || null;
+      }
+
+      if (projectToSelect) {
+        setCurrentProject(projectToSelect);
+      }
+    }
+  }, [user, projects, projectMembers, currentProject]);
+
   const loadProjects = async () => {
     if (!user) return;
 

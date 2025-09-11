@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
+  updateLastProject: (projectId: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -37,7 +38,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setUser(mapSupabaseUserToUser(session.user));
+        // Fetch user data from public.users table to get last_project_id
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userData && !error) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            avatar: userData.avatar,
+            role: userData.role as 'user' | 'admin' | 'superuser',
+            lastProjectId: userData.last_project_id
+          });
+        } else {
+          setUser(mapSupabaseUserToUser(session.user));
+        }
       } else {
         setUser(null);
       }
@@ -62,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
       avatar: authUser.user_metadata?.avatar_url || null,
       role: role,
-      lastProjectId: null
+      lastProjectId: authUser.user_metadata?.last_project_id || null
     };
   };
 
@@ -163,13 +182,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateLastProject = async (projectId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ last_project_id: projectId })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setUser(prev => prev ? { ...prev, lastProjectId: projectId } : null);
+    } catch (error) {
+      console.error('Error updating last project:', error);
+    }
+  };
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateLastProject, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

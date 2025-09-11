@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const ProjectSelector = () => {
-  const { user } = useAuth();
+  const { user, updateLastProject } = useAuth();
   const { 
     currentProject, 
     userProjects, 
@@ -18,8 +18,9 @@ const ProjectSelector = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
 
-  const handleSelectProject = (projectId: string) => {
+  const handleSelectProject = async (projectId: string) => {
     selectProject(projectId);
+    await updateLastProject(projectId);
     setIsOpen(false);
     toast.success('Проект выбран');
   };
@@ -50,6 +51,7 @@ const ProjectSelector = () => {
 
       const project = await createProject(newProjectName.trim(), newProjectDescription.trim() || undefined);
       selectProject(project.id);
+      await updateLastProject(project.id);
       setNewProjectName('');
       setNewProjectDescription('');
       setShowCreateForm(false);
