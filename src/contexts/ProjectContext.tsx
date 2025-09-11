@@ -65,16 +65,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         const lastProject = projects.find(p => p.id === user.lastProjectId);
         if (lastProject && canUserAccessProject(lastProject.id, user.id)) {
           projectToSelect = lastProject;
+          console.log('Selected last project for user:', user.email, 'project:', lastProject.name);
         }
       }
 
       // If no last project or no access, select first available project
       if (!projectToSelect) {
         projectToSelect = projects.find(p => canUserAccessProject(p.id, user.id)) || null;
+        if (projectToSelect) {
+          console.log('Selected first available project for user:', user.email, 'project:', projectToSelect.name);
+        }
       }
 
       if (projectToSelect) {
         setCurrentProject(projectToSelect);
+      } else {
+        console.log('No accessible projects found for user:', user.email);
       }
     }
   }, [user, projects, projectMembers, currentProject]);
@@ -102,16 +108,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       }));
 
       setProjects(mappedProjects);
-
-      // Select first available project if none selected
-      if (!currentProject && mappedProjects.length > 0) {
-        const accessibleProject = mappedProjects.find(p => 
-          canUserAccessProject(p.id, user.id)
-        );
-        if (accessibleProject) {
-          setCurrentProject(accessibleProject);
-        }
-      }
     } catch (error) {
       console.error('Error loading projects:', error);
     } finally {
@@ -147,13 +143,22 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const canUserAccessProject = (projectId: string, userId: string): boolean => {
     if (!userId) return false;
     
-    // Superuser has access to all projects
-    if (user?.role === 'superuser') return true;
+    // Check if user is superuser by email (since role might not be loaded yet)
+    const isSuperuser = user?.role === 'superuser' || 
+      ['admin@ai.ru', 'admin@example.com'].includes(user?.email || '');
+    
+    if (isSuperuser) {
+      console.log('Superuser access granted for project:', projectId, 'user:', user?.email);
+      return true;
+    }
     
     // Check if user is a member of the project
-    return projectMembers.some(member => 
+    const isMember = projectMembers.some(member => 
       member.projectId === projectId && member.userId === userId
     );
+    
+    console.log('Member access check for project:', projectId, 'user:', user?.email, 'isMember:', isMember);
+    return isMember;
   };
 
   const getUserRole = (projectId: string, userId: string): ProjectMember['role'] | null => {
