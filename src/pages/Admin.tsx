@@ -18,6 +18,9 @@ const Admin = () => {
     getProjectMembers
   } = useProject();
 
+  // Check if user is superuser
+  const isSuperuser = user?.role === 'superuser';
+
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [newProjectId, setNewProjectId] = useState<string>('');
   const [newRole, setNewRole] = useState<ProjectMember['role']>('viewer');
@@ -31,8 +34,6 @@ const Admin = () => {
     }
   }, [isSuperuser, loadAllUsers]);
 
-  // Check if user is superuser
-  const isSuperuser = user?.role === 'superuser';
 
   if (!isSuperuser) {
     return (
