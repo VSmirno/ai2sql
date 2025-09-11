@@ -27,14 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(mapSupabaseUserToUser(session.user));
-      }
-      setIsLoading(false);
-    });
-
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
@@ -55,7 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             lastProjectId: userData.last_project_id
           });
         } else {
-          setUser(mapSupabaseUserToUser(session.user));
+          // If no user data in public.users, create basic user object
+          const basicUser = mapSupabaseUserToUser(session.user);
+          setUser(basicUser);
         }
       } else {
         setUser(null);
