@@ -72,23 +72,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const userData = await loadUserData(session.user);
-        setUser(userData);
+        // Load user data asynchronously but don't block UI
+        loadUserData(session.user).then(userData => {
+          setUser(userData);
+        }).catch(error => {
+          console.error('Error loading user data:', error);
+          setUser(mapSupabaseUserToUser(session.user));
+        });
       }
       setIsLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        const userData = await loadUserData(session.user);
-        setUser(userData);
+        // Load user data asynchronously
+        loadUserData(session.user).then(userData => {
+          setUser(userData);
+        }).catch(error => {
+          console.error('Error loading user data:', error);
+          setUser(mapSupabaseUserToUser(session.user));
+        });
       } else {
         setUser(null);
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
