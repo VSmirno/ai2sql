@@ -144,7 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading all users:', error);
     }
-  }, [user]);
+  };
 
   const loadChats = async () => {
     if (!user || !currentProject) return;
