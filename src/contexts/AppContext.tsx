@@ -659,16 +659,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setConnections(prev => [newConnection, ...prev]);
 
       // Update project to link this connection and update local state
+      console.log('Updating project connection_id:', currentProject.id, 'with connection:', data.id);
       const { error: updateError } = await supabase
         .from('projects')
         .update({ connection_id: data.id })
         .eq('id', currentProject.id);
 
+      console.log('Project update result:', updateError);
       if (updateError) {
         console.error('Error updating project connection_id:', updateError);
         throw updateError;
       }
 
+      console.log('Successfully updated project connection_id');
       // Update project context with new connection ID
       updateProjectConnection(currentProject.id, data.id);
     } catch (error) {
