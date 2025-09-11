@@ -50,10 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // If no user data in public.users, create basic user object
           const basicUser = mapSupabaseUserToUser(session.user);
           setUser(basicUser);
-        }
       } else {
         setUser(null);
       }
+      setIsLoading(false);
       setIsLoading(false);
     });
 
