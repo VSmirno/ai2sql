@@ -12,7 +12,8 @@ import {
   Edit3,
   Trash2,
   User,
-  FolderOpen
+  FolderOpen,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
@@ -240,6 +241,20 @@ const Sidebar = () => {
           >
             <FolderOpen className="w-4 h-4" />
             <span>Проекты</span>
+          </NavLink>
+        )}
+        
+        {user?.role === 'superuser' && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center space-x-3 p-2 rounded-lg transition-colors ${
+                isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'
+              }`
+            }
+          >
+            <Shield className="w-4 h-4" />
+            <span>Администрирование</span>
           </NavLink>
         )}
         

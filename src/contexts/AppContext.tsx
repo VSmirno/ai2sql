@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Chat, UserNote, SqlExample, AppSettings, DatabaseConnection, TableMetadata, Message } from '../types';
+import { Chat, UserNote, SqlExample, AppSettings, DatabaseConnection, TableMetadata, Message, User } from '../types';
 import { useProject } from './ProjectContext';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
 interface AppContextType {
+  // Users
+  allUsers: User[];
+  loadAllUsers: () => Promise<void>;
+  
   // Chats
   chats: Chat[];
   currentChat: Chat | null;
@@ -58,6 +62,7 @@ export function useApp() {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { currentProject } = useProject();
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [notes, setNotes] = useState<UserNote[]>([]);
@@ -76,12 +81,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user && currentProject) {
       loadData();
+    } else if (user) {
+      // Load users even without a project for admin functionality
+      loadAllUsers();
     } else {
       clearData();
     }
   }, [user, currentProject]);
 
   const clearData = () => {
+    setAllUsers([]);
     setChats([]);
     setCurrentChat(null);
     setNotes([]);
@@ -97,6 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       await Promise.all([
+        loadAllUsers(),
         loadChats(),
         loadNotes(),
         loadSqlExamples(),
@@ -107,6 +117,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAllUsers = async () => {
+    if (!user) return;
+
+    // Only superusers can load all users
+    if (user.role !== 'superuser') return;
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedUsers = data.map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        avatar: u.avatar,
+        role: u.role as 'user' | 'admin' | 'superuser',
+        lastProjectId: u.last_project_id
+      }));
+
+      setAllUsers(mappedUsers);
+    } catch (error) {
+      console.error('Error loading all users:', error);
     }
   };
 
@@ -689,6 +728,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider value={{
+      allUsers,
+      loadAllUsers,
       chats,
       currentChat,
       createChat,

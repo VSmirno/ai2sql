@@ -13,6 +13,7 @@ import Notes from './pages/Notes';
 import SqlExamples from './pages/SqlExamples';
 import Settings from './pages/Settings';
 import ProjectManagement from './pages/ProjectManagement';
+import Admin from './pages/Admin';
 import { useAuth } from './contexts/AuthContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -72,6 +73,11 @@ function AppContent() {
             <Route path="projects" element={
               <ProtectedRoute>
                 <ProjectManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="admin" element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             } />
           </Route>
