@@ -125,7 +125,7 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-full bg-white flex flex-col">
+    <div className="bg-white">
       <div className="border-b border-gray-200 p-6">
         <div className="flex items-center space-x-3">
           <Shield className="w-8 h-8 text-blue-600" />
@@ -136,8 +136,7 @@ const Admin = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8 p-6">
+      <div className="max-w-6xl mx-auto space-y-8 p-6">
           {/* User Selection */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
@@ -368,7 +367,6 @@ const Admin = () => {
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   );
