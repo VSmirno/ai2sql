@@ -66,40 +66,42 @@ const ProjectSelector = () => {
 
   console.log('User role:', user?.role, 'Can create projects:', canCreateProjects);
 
-  if (!currentProject) {
-    return (
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p className="text-yellow-800 text-sm">Выберите проект для работы</p>
-        {canCreateProjects && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="mt-2 text-blue-600 hover:text-blue-800 text-sm underline"
-          >
-            Создать новый проект
-          </button>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        disabled={userProjects.length === 0 && !canCreateProjects}
         className="w-full flex items-center justify-between p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
       >
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">
-              {currentProject.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div className="text-left">
-            <div className="text-white font-medium text-sm">{currentProject.name}</div>
-            <div className="text-gray-400 text-xs">
-              {getUserRole(currentProject.id, user?.id || '') || 'member'}
-            </div>
-          </div>
+          {currentProject ? (
+            <>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">
+                  {currentProject.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="text-left">
+                <div className="text-white font-medium text-sm">{currentProject.name}</div>
+                <div className="text-gray-400 text-xs">
+                  {getUserRole(currentProject.id, user?.id || '') || 'member'}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">?</span>
+              </div>
+              <div className="text-left">
+                <div className="text-white font-medium text-sm">Выберите проект</div>
+                <div className="text-gray-400 text-xs">
+                  {userProjects.length} доступно
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -111,12 +113,18 @@ const ProjectSelector = () => {
               Доступные проекты
             </div>
             
+            {userProjects.length === 0 && !canCreateProjects && (
+              <div className="px-2 py-4 text-center text-gray-400 text-sm">
+                Нет доступных проектов
+              </div>
+            )}
+
             {userProjects.map((project) => (
               <button
                 key={project.id}
                 onClick={() => handleSelectProject(project.id)}
                 className={`w-full flex items-center space-x-3 p-2 rounded-lg text-left hover:bg-gray-700 transition-colors ${
-                  currentProject.id === project.id ? 'bg-gray-700' : ''
+                  currentProject?.id === project.id ? 'bg-gray-700' : ''
                 }`}
               >
                 <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
@@ -135,7 +143,7 @@ const ProjectSelector = () => {
 
             {canCreateProjects && (
               <>
-                <div className="border-t border-gray-700 my-2"></div>
+                {userProjects.length > 0 && <div className="border-t border-gray-700 my-2"></div>}
                 
                 {!showCreateForm ? (
                   <button
