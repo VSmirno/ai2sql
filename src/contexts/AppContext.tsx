@@ -123,9 +123,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadAllUsers = async () => {
     if (!user) return;
 
-    // Only superusers can load all users
-    if (user.role !== 'superuser') return;
-
     try {
       const { data, error } = await supabase
         .from('users')

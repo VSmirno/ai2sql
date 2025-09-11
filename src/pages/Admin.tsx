@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 const Admin = () => {
   const { user } = useAuth();
-  const { allUsers } = useApp();
+  const { allUsers, loadAllUsers } = useApp();
   const { 
     projects, 
     projectMembers,
@@ -23,6 +23,13 @@ const Admin = () => {
   const [newRole, setNewRole] = useState<ProjectMember['role']>('viewer');
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<ProjectMember['role']>('viewer');
+
+  // Load all users when component mounts
+  useEffect(() => {
+    if (isSuperuser) {
+      loadAllUsers();
+    }
+  }, [isSuperuser, loadAllUsers]);
 
   // Check if user is superuser
   const isSuperuser = user?.role === 'superuser';
